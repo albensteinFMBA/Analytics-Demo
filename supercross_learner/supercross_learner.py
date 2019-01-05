@@ -31,18 +31,18 @@ sPL = bkM*-g - sK*sT*sSag
 nu = 0.7
 
 # tire contact model 
-contactCloseEnough = 0.002 # 5mm tolerance is considered "close enough" for finding the true contact spacial position
+contactCloseEnough = 0.005 # 5mm tolerance is considered "close enough" for finding the true contact spacial position
 
 # define simulation
 dt = 0.01
-t=np.arange(0,1,dt)
+t=np.arange(0,20,dt)
 
 # defined track
 trkL = 30
 trkStep = 0.05
 trkX = np.arange(0,trkL,trkStep)
 trkY = np.multiply(0, np.ones(trkX.size))
-# trkY[150:160] = 0.1
+trkY[150:160] = 0.05
 
 # defined initial conditions
 bkX1 = trkX[0]
@@ -109,20 +109,8 @@ for i in range(t.size):
       print(" trkX_idxMin=",trkX_idxMin,'trkX_idxMax=',trkX_idxMax,'bkX[i]=',bkX[i],'trkX=',trkX, end="")
     
     xDistancesSquared = np.square(np.subtract(bkX[i],trkX[np.arange(trkX_idxMin, trkX_idxMax)])) # we will reused these several times, so compute only once
-#    print(bkX[i])
-#    print(bkY[i])
-#    print(whlY[i])
-#    print(whlY[np.arange(0,i+5)])
-#    print(np.arange(trkX_idxMin, trkX_idxMax))
-#    print(trkX[np.arange(trkX_idxMin, trkX_idxMax)])
-#    print(np.subtract(bkX[i],trkX[np.arange(trkX_idxMin, trkX_idxMax)]))
-#    print(xDistancesSquared)
-    print(np.sqrt(xDistancesSquared + np.square(np.subtract(whlY[i],trkY[np.arange(trkX_idxMin, trkX_idxMax)])))-whlR)
-#    print(np.amin(np.sqrt(xDistancesSquared + np.square(np.subtract(whlY[i],trkY[np.arange(trkX_idxMin, trkX_idxMax)])))))
-#    print(np.amin(np.sqrt(xDistancesSquared + np.square(np.subtract(whlY[i],trkY[np.arange(trkX_idxMin, trkX_idxMax)]))))-whlR)
     dMin = (np.amin(np.sqrt(xDistancesSquared
            + np.square(np.subtract(whlY[i],trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-    print(dMin)
     if dMin < contactCloseEnough:
       # if the shortest distance between the wheel center and a nearby track point is smaller than (wheel radius)-(contactCloseEnough), 
       # then the wheel is in contact with the track, and we must find the new whlY[i] that satisfies our "contactCloseEnough" criteria
@@ -138,8 +126,8 @@ for i in range(t.size):
       dMinMed = (np.amin(np.sqrt(xDistancesSquared
            + np.square(np.subtract(whlY_tmpMed,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
       dMinLo = dMin
-      print(" Hi=",whlY_tmpHi,'Med=',whlY_tmpMed,'Lo=',whlY_tmpLo,'dMinHi=',dMinHi,'dMinMed=',dMinMed,'dMinLo=',dMinLo, end="")
-      print("\n")
+#      print(" Hi=",whlY_tmpHi,'Med=',whlY_tmpMed,'Lo=',whlY_tmpLo,'dMinHi=',dMinHi,'dMinMed=',dMinMed,'dMinLo=',dMinLo, end="")
+#      print("\n")
       if dMinHi < contactCloseEnough:
           # if the suspension is bottomed out, and then whlY[i] = bkY[i], not great, 
           # but we're hoping this resolves itself next time step. 
@@ -169,10 +157,6 @@ for i in range(t.size):
           
           dMinMed = (np.amin(np.sqrt(xDistancesSquared
            + np.square(np.subtract(whlY_tmpMed,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-  #        print(" iterations=",iterations, end="")
-  #        print("\n")
-  #        print(" Hi=",whlY_tmpHi,'Med=',whlY_tmpMed,'Lo=',whlY_tmpLo,'dMinMed=',dMinMed, end="")
-  #        print("\n")
           if np.abs(dMinMed) <= contactCloseEnough or iterations > 30:
             # whlY_tmpMed is acceptably in contact with track
             whlY[i] = whlY_tmpMed
@@ -180,19 +164,9 @@ for i in range(t.size):
     else:
       inAir[i] = True
 
-#  if whlCntctMthd[i] == 2:
-#    break
   # detect and assert suspension travel compression and extension limits
   sTY[i] = bkY[i] - whlY[i]
-#  if sTY[i] <= 0:
-#    bkY[i] = whlY[i]
-#    print('bottomout')
-#    print(whlY[i])
-#  if sTY[i] > sT:
-#    whlY[i] = bkY[i] - sT
-#    print('extension limit')
-#    print(whlY[i])
-#  sTY[i] = bkY[i] - whlY[i] # update suspension travel
+
   # compute suspension forces. convention, extension=+ve, tension=-ve
   sFk[i] = sPL + (sT - sTY[i])*sK
   if i > 0:
@@ -207,6 +181,7 @@ for i in range(t.size):
   bkaY[i] = (bkM*g + sFk[i] + sFb[i] - sFt[i] + bkDragY[i]) / bkM
   bkvY[i+1]  = bkvY[i]  + bkaY[i] *dt
   bkY[i+1]   = bkY[i]   + bkvY[i] *dt
+  
   # integrate
   # wheel
   if inAir[i]:
@@ -219,7 +194,6 @@ for i in range(t.size):
       print('extension limit')
       whlY[i+1] = bkY[i+1] - sT
 
-  
   # find available peak torque
   if whlW[i] > 0:
     pkTrq = min(bkTrq, bkPwr/whlW[i])
@@ -228,7 +202,6 @@ for i in range(t.size):
 
   # compute torque command
   cmdTrq = pkTrq*0.1 # no agent yet, apply fraction of peak torque
-  
   
   # compute wheel rotational free body and bike longitudinal free body
   if abs(bkvX[i]) > 0.01:
@@ -248,23 +221,32 @@ for i in range(t.size):
     bkaX[i] = (whlfX[i] + bkDragX[i])/(bkM+whlM)
 
   # integrate
-  # wheel rotational. done above
   # bike longitudinal (bike X and whlX are the same)
   bkvX[i+1]  = bkvX[i]  + bkaX[i] *dt
   bkX[i+1]   = bkX[i]   + bkvX[i] *dt
 
 # plot positioins vs time
 fig1, ax1 = plt.subplots()
-ax1.plot(t,bkY, label='bike')
-ax1.plot(t,whlY, label='wheel')
-ax1.plot(t,sTY, label='susp travel')
+ax1.plot(t,bkY, label='bkY')
+ax1.plot(t,whlY, label='whlY')
+ax1.plot(t,sTY, label='sTY')
 ax1.legend()
 # ax1.set_ylim(0,None)
 
+fig2, ax2 = plt.subplots()
+ax2.plot(trkX,trkY, label='trk')
+ax2.plot(bkX,bkY, label='bk')
+ax2.plot(bkX,whlY, label='whl')
+ax2.legend()
+
 # plot velocity vs time
 fig5, ax5 = plt.subplots()
-ax5.plot(t,bkvX, label='bkvX')
+ax5.plot(bkX,bkvX, label='bkvX vs bkX')
+ax5.plot(bkX,bkvY, label='bkvY vs bkX')
 ax5.legend()
+#fig8, ax8 = plt.subplots()
+#ax8.plot(t,whlW, label='whlW')
+#ax8.legend()
 
 # plot tire beahvior
 fig6, ax6 = plt.subplots()
@@ -273,9 +255,7 @@ ax6.legend()
 fig7, ax7 = plt.subplots()
 ax7.plot(t,whlfX, label='whlfX')
 ax7.legend()
-# fig8, ax8 = plt.subplots()
-# ax8.plot(t,whlW, label='whlW')
-# ax8.legend()
+
 # fig9, ax9 = plt.subplots()
 # ax9.plot(t,whlAlpha, label='whlAlpha')
 # ax9.legend()
@@ -296,12 +276,12 @@ ax2.plot(t,whlfY, label='whlfY')
 ax2.legend()
 
 # plot distance and height vs time
-# fig4 = plt.figure()
-# ax4 = fig4.add_subplot(111, projection='3d')
-# ax4.plot(bkX,t,bkY, label='bike')
-# ax4.plot(bkX,t,whlY, label='wheel')
-# ax4.legend()
-# ax4.set_ylim(0,None)
+fig4 = plt.figure()
+ax4 = fig4.add_subplot(111, projection='3d')
+ax4.plot(bkX,t,bkY, label='bike')
+ax4.plot(bkX,t,whlY, label='wheel')
+ax4.legend()
+ax4.set_ylim(0,None)
 # rotate the axes and update
 # for angle in range(0, 360):
 #     ax4.view_init(30, angle)
