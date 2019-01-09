@@ -3,6 +3,7 @@ import numpy as np
 #import math as math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from supercross_track_maker import mk_trk1
 
 # Define constants for environment model
 g = -9.81
@@ -38,11 +39,17 @@ dt = 0.01
 t=np.arange(0,20,dt)
 
 # defined track
-trkL = 30
+pts = mk_trk1()
 trkStep = 0.05
-trkX = np.arange(0,trkL,trkStep)
-trkY = np.multiply(0, np.ones(trkX.size))
-trkY[150:160] = 0.05
+trkX = np.arange(pts[0,0],pts[0,-1],0.05)
+trkY = np.interp(trkX,pts[0,:],pts[1,:])
+fig12, ax12 = plt.subplots()
+ax12.plot(trkX,trkY, label='trk')
+
+#trkL = 30
+#trkX = np.arange(0,trkL,trkStep)
+#trkY = np.multiply(0, np.ones(trkX.size))
+#trkY[150:160] = 0.05
 
 # defined initial conditions
 bkX1 = trkX[0]
@@ -234,15 +241,15 @@ ax1.legend()
 # ax1.set_ylim(0,None)
 
 fig2, ax2 = plt.subplots()
-ax2.plot(trkX,trkY, label='trk')
-ax2.plot(bkX,bkY, label='bk')
-ax2.plot(bkX,whlY, label='whl')
+ax2.plot(trkX[0:i],trkY[0:i], label='trk')
+ax2.plot(bkX[0:i],bkY[0:i], label='bk')
+ax2.plot(bkX[0:i],whlY[0:i], label='whl')
 ax2.legend()
 
 # plot velocity vs time
 fig5, ax5 = plt.subplots()
-ax5.plot(bkX,bkvX, label='bkvX vs bkX')
-ax5.plot(bkX,bkvY, label='bkvY vs bkX')
+ax5.plot(bkX[0:i],bkvX[0:i], label='bkvX vs bkX')
+ax5.plot(bkX[0:i],bkvY[0:i], label='bkvY vs bkX')
 ax5.legend()
 #fig8, ax8 = plt.subplots()
 #ax8.plot(t,whlW, label='whlW')
