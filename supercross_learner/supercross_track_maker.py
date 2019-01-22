@@ -90,7 +90,10 @@ if __name__ == '__main__':
   face_deg = 30
   land_deg = 30
   height_ft = 3
-  flat_ft = 10
+  flat_ft = 0
+  ctrX_ft = -1
+  startX_ft = -1
+  endX_ft = -1
   
   ptsTmp = np.zeros((2,1000))
   # face curve section is meant to cover from the first inclined section, to the inclined section which is 1*DangDxMax from face_deg
@@ -202,18 +205,25 @@ if __name__ == '__main__':
   ptsTmp[1,landCurveEnd-1] = 0
   
   pts=ptsTmp[:,0:landCurveEnd]
+  
+  if startX_ft > 0:
+    pts[0,:] = pts[0,:] + startX_ft
+  elif ctrX_ft > 0:
+    pts[0,:] = pts[0,:] + ctrX_ft - pts[0,-1]/2
+  elif endX_ft > 0:
+    pts[0,:] = pts[0,:] + endX_ft - pts[0,-1]
 #  print(ptsTmp)
 #  print(pts)
   fig5, ax5 = plt.subplots()
-  ax5.plot(ptsTmp[0,0:faceCurveEnd],ptsTmp[1,0:faceCurveEnd],'ro', label='faceCurve')
-  ax5.plot(ptsTmp[0,faceCurveEnd:faceEnd],ptsTmp[1,faceCurveEnd:faceEnd],'mo', label='face')
-  ax5.plot(ptsTmp[0,topCurveStart:topCurveEnd],ptsTmp[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
-  ax5.plot(ptsTmp[0,topCurveEnd:landEnd],ptsTmp[1,topCurveEnd:landEnd],'co', label='land')
-  ax5.plot(ptsTmp[0,landEnd:landCurveEnd],ptsTmp[1,landEnd:landCurveEnd],'go', label='landCurve')
-  ax5.plot(ptsTmp[0,0:landCurveEnd],ptsTmp[1,0:landCurveEnd],'k+',label='all')
+  ax5.plot(pts[0,0:faceCurveEnd],pts[1,0:faceCurveEnd],'ro', label='faceCurve')
+  ax5.plot(pts[0,faceCurveEnd:faceEnd],pts[1,faceCurveEnd:faceEnd],'mo', label='face')
+  ax5.plot(pts[0,topCurveStart:topCurveEnd],pts[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
+  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
+  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
+  ax5.plot(pts[0,0:landCurveEnd],pts[1,0:landCurveEnd],'k+',label='all')
   ax5.grid()
   ax5.legend()
-  print(ptsTmp[1,landCurveEnd-1])
+  print(pts[1,-1])
     
     
 #  pts1 = mk_jump(30, 10, 6)
