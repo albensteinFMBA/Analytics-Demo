@@ -87,8 +87,8 @@ def mk_trk1(): #just a triple jump
 
 if __name__ == '__main__':
   ang=30
-  face_deg = ang
-  land_deg = ang
+  face_deg = 30
+  land_deg = 30
   height_ft = 3
   
   ptsTmp = np.zeros((2,1000))
@@ -161,13 +161,13 @@ if __name__ == '__main__':
     print(LandCurveHeight) 
   remHeight = ptsTmp[1,topCurveEnd-1] - LandCurveHeight
   print(remHeight) 
-  remLength = remHeight/math.sin(face_deg*deg2rad)
+  remLength = remHeight/math.sin(land_deg*deg2rad)
   print(remLength)
   nLandSec = math.ceil(remLength/secLen)
   for j in range(nLandSec+1):
     i = j + topCurveEnd-1
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(face_deg*deg2rad)
-    ptsTmp[1,i+1] = ptsTmp[1,i] - secLen*math.sin(face_deg*deg2rad)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(land_deg*deg2rad)
+    ptsTmp[1,i+1] = ptsTmp[1,i] - secLen*math.sin(land_deg*deg2rad)
   
   i+=1
   landEnd=i+1
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(land_deg*deg2rad - n*DangDxMax)
     ptsTmp[1,i+1] = ptsTmp[1,i] - secLen*math.sin(land_deg*deg2rad - n*DangDxMax)
   landCurveEnd=i+1
-#  ptsTmp[1,landCurveEnd-1] = 0
+  ptsTmp[1,landCurveEnd-1] = 0
   
   pts=ptsTmp[:,0:landCurveEnd]
 #  print(ptsTmp)
