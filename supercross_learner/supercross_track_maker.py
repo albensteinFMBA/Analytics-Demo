@@ -90,6 +90,7 @@ if __name__ == '__main__':
   face_deg = 30
   land_deg = 30
   height_ft = 3
+  flat_ft = 10
   
   ptsTmp = np.zeros((2,1000))
   # face curve section is meant to cover from the first inclined section, to the inclined section which is 1*DangDxMax from face_deg
@@ -137,10 +138,22 @@ if __name__ == '__main__':
   iOffset = i
   topCurveStart = i
   nTopCurveSec = math.ceil((face_deg+land_deg)*deg2rad/DangDxMax)
+  iOffsetFlat=0
+  flatCreated=0
+  if flat_ft > 0:
+    nFlatSec = math.ceil(flat_ft/secLen)
   for j in range(nTopCurveSec+1): # python doesn't include the last index when indexing arrays,
-    i = j + iOffset
+    i = j + iOffset + iOffsetFlat
     ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(face_deg*deg2rad - j*DangDxMax)
     ptsTmp[1,i+1] = ptsTmp[1,i] + secLen*math.sin(face_deg*deg2rad - j*DangDxMax)
+    if flat_ft > 0 and (face_deg*deg2rad - j*DangDxMax) == 0 and flatCreated == 0:
+      flatCreated = 1
+      for k in range(nFlatSec+1):
+        i = j + iOffset + iOffsetFlat
+        ptsTmp[0,i+1] = ptsTmp[0,i] + secLen
+        ptsTmp[1,i+1] = ptsTmp[1,i]
+        iOffsetFlat +=1
+      iOffsetFlat -=1
   i+=1 # increment i to catch the last i+1 element written to
   topCurveEnd=i+1 # python doesn't include the last index when indexing arrays,
   
