@@ -7,94 +7,24 @@ import math as math
 from scipy import integrate
 
 # all dimension in meters, but input might be in feet.
-ft2m = 0.3048*0+1
+ft2m = 0.3048
 deg2rad = np.pi/180
 MINRADIUS = 1/0.3048
 DangDxMax = 5*deg2rad;
 secLen = 2*MINRADIUS*math.sin(DangDxMax)
 
 
+def convert_units_to_meters(pts):
+  pts = np.multiply(ft2m, pts)
+  return pts
 
-
-def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, ctrX_ft=-1):
+def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, endX_ft=-1):
   # create jump, creates the 3 or 4 set of tuples for X,Y positions for a jump or table
   # test inputs
 #  face_deg = 30
 #  land_deg = 30
 #  height_ft = 6
 #  flat_ft = 10
-  ctrX_m = ctrX_ft*ft2m
-  height_m = height_ft*ft2m + MINRADIUS
-  if flat_ft == 0:
-    pts = np.zeros((2,3))
-  else:
-    pts = np.zeros((2,4))
-  pts[0,:] = 0
-  pts[1,1] = height_m
-  pts[0,1] = height_m/np.tan(face_deg*deg2rad)
-  if flat_ft != 0:
-    pts[0,2] = pts[0,1] + flat_ft*ft2m
-    pts[1,2] = pts[1,1]
-  pts[0,-1] = pts[0,-2] + pts[1,-2]/np.tan(land_deg*deg2rad)
-  pts[1,-1] = 0
-  if ctrX_ft != -1:
-    if flat_ft == 0:
-      pts[0,0] = ctrX_m - pts[0,1]
-      pts[0,2] = ctrX_m + pts[0,2] - pts[0,1]
-      pts[0,1] = ctrX_m
-    else:
-      pts[0,0] = ctrX_m - flat_ft/2*ft2m - pts[0,1]
-      pts[0,3] = ctrX_m + flat_ft/2*ft2m + (pts[0,-1] - pts[0,-2])
-      pts[0,1] = ctrX_m - flat_ft/2*ft2m
-      pts[0,2] = ctrX_m + flat_ft/2*ft2m
-  
-  return pts
-
-def mk_trpl(startX_ft=0,gap_ft=60):
-  #  create a triple jump, with start, and gap specified
-  pts1 = mk_jump(30, 30, 6)
-  pts1[0,:] += startX_ft
-  pts3 = mk_jump(30, 10, 3, ctrX_ft=(pts1[0,1]+gap_ft)) 
-  pts2 = mk_jump(30, 20, 4.5, ctrX_ft=(pts1[0,2]+(pts3[0,0]-pts1[0,2])/2))
-  pts = np.concatenate((pts1, pts2, pts3), axis=1)
-  
-  return pts
-
-def mk_onoff(startX_ft=0,gap_ft=60):
-  startX_ft=0
-  gap_ft = 10
-  pts1 = mk_jump(30,30,3)
-  pts1[0,:] += startX_ft
-  pts2 = mk_jump(20,20,4,flat_ft=15)
-  pts2[0,:] = pts2[0,:] + pts1[0,2] + gap_ft
-  pts3 = mk_jump(30,20,3)
-  pts3[0,:] = pts3[0,:] + pts2[0,3] + gap_ft
-  pts = np.concatenate((pts1, pts2, pts3), axis=1)
-  
-  return pts
-
-
-def mk_trk1(): #just a triple jump
-  pts1 = np.array([[0],[0]])
-  pts2 = mk_trpl()
-  pts2[0,:] = pts2[0,:] + 30
-  pts3 = np.array([[30],[0]])
-  pts3[0,:] = pts3[0,:] + pts2[0,-1]
-  
-  pts = np.concatenate((pts1, pts2, pts3), axis=1)
-  
-  return pts
-
-if __name__ == '__main__':
-  ang=30
-  face_deg = 30
-  land_deg = 30
-  height_ft = 3
-  flat_ft = 0
-  ctrX_ft = -1
-  startX_ft = -1
-  endX_ft = -1
-  
   ptsTmp = np.zeros((2,1000))
   # face curve section is meant to cover from the first inclined section, to the inclined section which is 1*DangDxMax from face_deg
   nFaceCurveSec_raw = face_deg*deg2rad/DangDxMax
@@ -116,12 +46,12 @@ if __name__ == '__main__':
   for k in range(nTopCurveFirstPartSec+1):
     n=k+1
     topCurveHeight += secLen*math.sin(n*DangDxMax)
-    print('topCurveHeight')
-    print(topCurveHeight)
+#    print('topCurveHeight')
+#    print(topCurveHeight)
   remHeight = height_ft -  faceCurveHeight - topCurveHeight
-  print(remHeight)
+#  print(remHeight)
   remLength = remHeight/math.sin(face_deg*deg2rad)
-  print(remLength)
+#  print(remLength)
   nFaceSec = math.ceil(remLength/secLen)
   for j in range(nFaceSec+1):
     i = j + faceCurveEnd-1
@@ -173,12 +103,12 @@ if __name__ == '__main__':
   for j in range(nLandCurveSec+1):
     n=j+1
     LandCurveHeight += secLen*math.sin(n*DangDxMax)
-    print('LandCurveHeight') 
-    print(LandCurveHeight) 
+#    print('LandCurveHeight') 
+#    print(LandCurveHeight) 
   remHeight = ptsTmp[1,topCurveEnd-1] - LandCurveHeight
-  print(remHeight) 
+#  print(remHeight) 
   remLength = remHeight/math.sin(land_deg*deg2rad)
-  print(remLength)
+#  print(remLength)
   nLandSec = math.ceil(remLength/secLen)
   for j in range(nLandSec+1):
     i = j + topCurveEnd-1
@@ -212,15 +142,88 @@ if __name__ == '__main__':
     pts[0,:] = pts[0,:] + ctrX_ft - pts[0,-1]/2
   elif endX_ft > 0:
     pts[0,:] = pts[0,:] + endX_ft - pts[0,-1]
+  
+  return pts
+
+def mk_flat(startX_ft=0,endX_ft=100,len_ft=-1):
+  if len_ft > -1:
+    ptsX = np.arange(startX_ft,(startX_ft+len_ft),secLen)
+  else:
+    ptsX = np.arange(startX_ft,endX_ft,secLen)
+  pts = np.zeros((2,ptsX.size))
+  pts[0,:] = ptsX
+  return pts
+
+def mk_trpl(startX_ft=0,gap_ft=60):
+  #  create a triple jump, with start, and gap specified
+  pts1 = mk_jump(30, 30, 6)
+  pts1[0,:] += startX_ft
+  jump1PkX = np.mean(pts1[0,:])
+  pts3 = mk_jump(30, 10, 3, ctrX_ft=(jump1PkX+gap_ft)) 
+  pts2 = mk_jump(30, 20, 4.5, ctrX_ft=(pts1[0,-1]+(pts3[0,0]-pts1[0,-1])/2))
+  ptsFlat1 = mk_flat(pts1[0,-1],pts2[0,0])
+  ptsFlat2 = mk_flat(pts2[0,-1],pts3[0,0])
+  pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
+  
+  return pts
+
+def mk_onoff(startX_ft=0,gap_ft=60):
+  startX_ft=0
+  gap_ft = 10
+  pts1 = mk_jump(30,30,3)
+  pts1[0,:] += startX_ft
+  pts2 = mk_jump(20,20,4,flat_ft=15)
+  pts2[0,:] = pts2[0,:] + pts1[0,-1] + gap_ft
+  pts3 = mk_jump(30,20,3)
+  pts3[0,:] = pts3[0,:] + pts2[0,-1] + gap_ft
+  ptsFlat1 = mk_flat(pts1[0,-1],pts2[0,0])
+  ptsFlat2 = mk_flat(pts2[0,-1],pts3[0,0])
+  pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
+  
+  return pts
+
+
+def mk_trk1(units='ft'): #just a triple jump
+  pts1 = mk_flat(endX_ft=30)
+  pts2 = mk_trpl(startX_ft=(pts1[0,-1]+secLen))
+  pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=30)
+  
+  pts = np.concatenate((pts1, pts2, pts3), axis=1)
+  if units == 'm':
+    pts = convert_units_to_meters(pts)
+  
+  
+  return pts
+
+if __name__ == '__main__':
+  ang=30
+  face_deg = 30
+  land_deg = 10
+  height_ft = 3
+  flat_ft = 0
+  ctrX_ft = -1
+  startX_ft = -1
+  endX_ft = -1
+  
+
+#  pts = mk_jump(face_deg, land_deg, height_ft)
+#  pts = mk_trpl()
+#  pts = mk_onoff()
+  pts = mk_trk1()
+  pts_m = mk_trk1(units='m')
+  
+  
+  
 #  print(ptsTmp)
 #  print(pts)
   fig5, ax5 = plt.subplots()
-  ax5.plot(pts[0,0:faceCurveEnd],pts[1,0:faceCurveEnd],'ro', label='faceCurve')
-  ax5.plot(pts[0,faceCurveEnd:faceEnd],pts[1,faceCurveEnd:faceEnd],'mo', label='face')
-  ax5.plot(pts[0,topCurveStart:topCurveEnd],pts[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
-  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
-  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
-  ax5.plot(pts[0,0:landCurveEnd],pts[1,0:landCurveEnd],'k+',label='all')
+#  ax5.plot(pts[0,0:faceCurveEnd],pts[1,0:faceCurveEnd],'ro', label='faceCurve')
+#  ax5.plot(pts[0,faceCurveEnd:faceEnd],pts[1,faceCurveEnd:faceEnd],'mo', label='face')
+#  ax5.plot(pts[0,topCurveStart:topCurveEnd],pts[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
+#  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
+#  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
+  ax5.plot(pts[0,:],pts[1,:],'co',label='ft')
+  ax5.plot(pts_m[0,:],pts_m[1,:],'k+',label='m')
   ax5.grid()
   ax5.legend()
   print(pts[1,-1])

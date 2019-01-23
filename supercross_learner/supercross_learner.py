@@ -39,7 +39,7 @@ dt = 0.01
 t=np.arange(0,20,dt)
 
 # defined track
-pts = mk_trk1()
+pts = mk_trk1(units='m')
 trkStep = 0.05
 trkX = np.arange(pts[0,0],pts[0,-1],0.05)
 trkY = np.interp(trkX,pts[0,:],pts[1,:])
