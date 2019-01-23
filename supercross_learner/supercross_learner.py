@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from supercross_track_maker import mk_trk1
 
+# solver selection
+dontUseBisection_flg = False
+
+
 # Define constants for environment model
 g = -9.81
 
@@ -96,10 +100,12 @@ for i in range(t.size):
 
     
 
-  if (bkX[i] < whlR) or (bkX[i] > (trkX[-1]-whlR)):
-    # detect and assert wheel contact with track using single point method
+  if (bkX[i] < whlR) or (bkX[i] > (trkX[-1]-whlR)) or dontUseBisection_flg:
+    # if the bike is less than one wheel radius from the ends of the track, then detect and assert wheel contact with track using single point method
     whlCntctMthd[i] = 1
-    if (whlY[i] - whlR - trkYt) <= 0:  
+#    if (bkY[i]-sT-whlR) <= trkYt: 
+    if (whlY[i] - whlR - trkYt) <= 0: 
+#    if (bkY[i]-sT-whlR) <= trkYt and (bkY[i]-whlR) >= trkYt:# find if, within suspesion travel, the wheel can touch the track, and if so, set whY[i] to trkY[i]+whlR
       whlY[i] = trkYt + whlR
       inAir[i] = False
     else:
@@ -164,8 +170,9 @@ for i in range(t.size):
           
           dMinMed = (np.amin(np.sqrt(xDistancesSquared
            + np.square(np.subtract(whlY_tmpMed,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-          if np.abs(dMinMed) <= contactCloseEnough or iterations > 30:
+          if np.abs(dMinMed) <= contactCloseEnough or iterations > 1000:
             # whlY_tmpMed is acceptably in contact with track
+            print('bisection too many iterations')
             whlY[i] = whlY_tmpMed
             break
     else:
@@ -198,7 +205,7 @@ for i in range(t.size):
     whlY[i+1]  = whlY[i]  + whlvY[i]*dt
     # detect and assert suspension travel extension limits
     if bkY[i+1] - whlY[i+1] > sT:
-      print('extension limit')
+#      print('extension limit')
       whlY[i+1] = bkY[i+1] - sT
 
   # find available peak torque
