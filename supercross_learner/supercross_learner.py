@@ -5,10 +5,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from supercross_track_maker import mk_trk1, mk_trk2
 
-# solver selection
-dontUseBisection_flg = False
-
-
 # Define constants for environment model
 g = -9.81
 
@@ -36,9 +32,6 @@ sPL = bkM*-g - sK*sT*sSag
 # tire grip model - nu*Fy
 nu = 0.7
 
-# tire contact model 
-contactCloseEnough = 0.005 # 5mm tolerance is considered "close enough" for finding the true contact spacial position
-
 # define simulation
 dt = 0.001
 t=np.arange(0,20,dt)
@@ -50,11 +43,6 @@ trkX = np.arange(pts[0,0],pts[0,-1],0.05)
 trkY = np.interp(trkX,pts[0,:],pts[1,:])
 #fig12, ax12 = plt.subplots()
 #ax12.plot(trkX,trkY, label='trk')
-
-#trkL = 30
-#trkX = np.arange(0,trkL,trkStep)
-#trkY = np.multiply(0, np.ones(trkX.size))
-#trkY[150:160] = 0.05
 
 # defined initial conditions
 bkX1 = trkX[0]
@@ -96,89 +84,6 @@ for i in range(t.size):
   if (i >= t.size - 1) or (bkX[i] >= trkX[-1]):
     break
   
-  # loop layout
-  # 1] use 
-   
-
-#  if (bkX[i] < whlR) or (bkX[i] > (trkX[-1]-whlR)) or dontUseBisection_flg:
-#    # if the bike is less than one wheel radius from the ends of the track, then detect and assert wheel contact with track using single point method
-#    whlCntctMthd[i] = 1
-##    if (bkY[i]-sT-whlR) <= trkYt: 
-#    if (whlY[i] - whlR - trkYt) <= 0: 
-##    if (bkY[i]-sT-whlR) <= trkYt and (bkY[i]-whlR) >= trkYt:# find if, within suspesion travel, the wheel can touch the track, and if so, set whY[i] to trkY[i]+whlR
-#      whlY[i] = trkYt + whlR
-#      inAir[i] = False
-#    else:
-#      inAir[i] = True  
-#  else:
-#    whlCntctMthd[i] = 2
-#    # detect and assert wheel contact with track using multi-point root finding method
-#    iterations=0  
-#     # find all track point which may be in contact with wheel, e.g. all point 1 wheel radius in front, and all points 1 wheel radius behind
-#      
-#    trkX_idxMin = (np.abs(trkX - (bkX[i]-whlR))).argmin()
-#    trkX_idxMax = (np.abs(trkX - (bkX[i]+whlR))).argmin()
-#    if trkX_idxMin >= trkX_idxMax:
-#      print(" trkX_idxMin=",trkX_idxMin,'trkX_idxMax=',trkX_idxMax,'bkX[i]=',bkX[i],'trkX=',trkX, end="")
-#    
-#    xDistancesSquared = np.square(np.subtract(bkX[i],trkX[np.arange(trkX_idxMin, trkX_idxMax)])) # we will reused these several times, so compute only once
-#    dMin = (np.amin(np.sqrt(xDistancesSquared
-#           + np.square(np.subtract(whlY[i],trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-#    if dMin < contactCloseEnough:
-#      # if the shortest distance between the wheel center and a nearby track point is smaller than (wheel radius)-(contactCloseEnough), 
-#      # then the wheel is in contact with the track, and we must find the new whlY[i] that satisfies our "contactCloseEnough" criteria
-#      inAir[i] = False
-#      
-#      # define wheel Y positions and compute their distance to initialze bisection method inputs
-#      whlY_tmpHi = bkY[i]+whlR/2
-#      whlY_tmpLo = whlY[i]
-#      whlY_tmpMed = np.mean(np.array([whlY_tmpHi,whlY_tmpLo]))
-#    
-#      dMinHi = (np.amin(np.sqrt(xDistancesSquared
-#           + np.square(np.subtract(whlY_tmpHi,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-#      dMinMed = (np.amin(np.sqrt(xDistancesSquared
-#           + np.square(np.subtract(whlY_tmpMed,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-#      dMinLo = dMin
-##      print(" Hi=",whlY_tmpHi,'Med=',whlY_tmpMed,'Lo=',whlY_tmpLo,'dMinHi=',dMinHi,'dMinMed=',dMinMed,'dMinLo=',dMinLo, end="")
-##      print("\n")
-#      if dMinHi < contactCloseEnough:
-#          # if the suspension is bottomed out, and then whlY[i] = bkY[i], not great, 
-#          # but we're hoping this resolves itself next time step. 
-#          # if this is a regular occurence over multiple consecutive time steps, we'll need a better solution
-#          whlY[i] = whlY_tmpHi
-#          bkY[i] = whlY_tmpHi
-#          print('ERROR: wheel too far penetrated into track at step')
-#          print(i)
-#      elif np.abs(dMinMed) <= contactCloseEnough:
-#          # the inital med position is ok, all done
-#          whlY[i] = whlY_tmpMed
-#      else:
-#        # apply bisection method to find acceptable whlY[i]
-#        iterations=0
-#        while True:
-#          iterations+=1
-#          if dMinMed < 0:
-#            # the med point results in too much penetration between wheel and track
-#            # repeat search between Hi and Med
-#            whlY_tmpLo = whlY_tmpMed
-#            whlY_tmpMed = np.mean(np.array([whlY_tmpHi,whlY_tmpLo]))
-#          else:
-#            # the med point results in no contact between wheel and track
-#            # repeat search between Med and Lo
-#            whlY_tmpHi = whlY_tmpMed
-#            whlY_tmpMed = np.mean(np.array([whlY_tmpHi,whlY_tmpLo]))
-#          
-#          dMinMed = (np.amin(np.sqrt(xDistancesSquared
-#           + np.square(np.subtract(whlY_tmpMed,trkY[np.arange(trkX_idxMin, trkX_idxMax)])))) - whlR)
-#          if np.abs(dMinMed) <= contactCloseEnough or iterations > 1000:
-#            # whlY_tmpMed is acceptably in contact with track
-#            print('bisection too many iterations')
-#            whlY[i] = whlY_tmpMed
-#            break
-#    else:
-#      inAir[i] = True
-
-
   # compute suspension forces. convention, extension=+ve, tension=-ve
   if i > 0:
     if inAir[i]:

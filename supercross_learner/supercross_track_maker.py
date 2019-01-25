@@ -20,11 +20,6 @@ def convert_units_to_meters(pts):
 
 def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, endX_ft=-1):
   # create jump, creates the 3 or 4 set of tuples for X,Y positions for a jump or table
-  # test inputs
-#  face_deg = 30
-#  land_deg = 30
-#  height_ft = 6
-#  flat_ft = 10
   ptsTmp = np.zeros((2,1000))
   # face curve section is meant to cover from the first inclined section, to the inclined section which is 1*DangDxMax from face_deg
   nFaceCurveSec_raw = face_deg*deg2rad/DangDxMax
@@ -36,22 +31,15 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
   faceCurveEnd=i+1 # python doesn't include the last index when indexing arrays, so add one. e.g. to see elements 0,1,2, we need to query for 0:3
   faceCurveHeight = ptsTmp[1,i+1]
   
-#  fig1, ax1 = plt.subplots()
-#  ax1.plot(ptsTmp[0,0:faceCurveEnd],ptsTmp[1,0:faceCurveEnd],'ro', label='faceCurve')
-#  ax1.grid()
-  
   i+=1  
   nTopCurveFirstPartSec = math.ceil(face_deg*deg2rad/DangDxMax)
   topCurveHeight = 0
   for k in range(nTopCurveFirstPartSec+1):
     n=k+1
     topCurveHeight += secLen*math.sin(n*DangDxMax)
-#    print('topCurveHeight')
-#    print(topCurveHeight)
+
   remHeight = height_ft -  faceCurveHeight - topCurveHeight
-#  print(remHeight)
   remLength = remHeight/math.sin(face_deg*deg2rad)
-#  print(remLength)
   nFaceSec = math.ceil(remLength/secLen)
   for j in range(nFaceSec+1):
     i = j + faceCurveEnd-1
@@ -59,17 +47,8 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
     ptsTmp[1,i+1] = ptsTmp[1,i] + secLen*math.sin(face_deg*deg2rad)
  
   i+=1 
-  faceEnd=i
-  
-#  print(i)
-#  fig2, ax2 = plt.subplots()
-#  ax2.plot(ptsTmp[0,0:faceCurveEnd],ptsTmp[1,0:faceCurveEnd],'ro', label='faceCurve')
-#  ax2.plot(ptsTmp[0,faceCurveEnd:faceEnd],ptsTmp[1,faceCurveEnd:faceEnd],'mo', label='face')
-#  ax2.plot(ptsTmp[0,0:faceEnd],ptsTmp[1,0:faceEnd],'k+',label='all')
-#  ax2.grid()
   
   iOffset = i
-  topCurveStart = i
   nTopCurveSec = math.ceil((face_deg+land_deg)*deg2rad/DangDxMax)
   iOffsetFlat=0
   flatCreated=0
@@ -89,26 +68,13 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
       iOffsetFlat -=1
   i+=1 # increment i to catch the last i+1 element written to
   topCurveEnd=i+1 # python doesn't include the last index when indexing arrays,
-  
-#  print(i)
-#  fig3, ax3 = plt.subplots()
-#  ax3.plot(ptsTmp[0,0:faceCurveEnd],ptsTmp[1,0:faceCurveEnd],'ro', label='faceCurve')
-#  ax3.plot(ptsTmp[0,faceCurveEnd:faceEnd],ptsTmp[1,faceCurveEnd:faceEnd],'mo', label='face')
-#  ax3.plot(ptsTmp[0,topCurveStart:topCurveEnd],ptsTmp[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
-#  ax3.plot(ptsTmp[0,0:topCurveEnd],ptsTmp[1,0:topCurveEnd],'k+',label='all')
-#  ax3.grid()
-  
   nLandCurveSec = math.ceil(land_deg*deg2rad/DangDxMax)
   LandCurveHeight = 0
   for j in range(nLandCurveSec+1):
     n=j+1
     LandCurveHeight += secLen*math.sin(n*DangDxMax)
-#    print('LandCurveHeight') 
-#    print(LandCurveHeight) 
   remHeight = ptsTmp[1,topCurveEnd-1] - LandCurveHeight
-#  print(remHeight) 
   remLength = remHeight/math.sin(land_deg*deg2rad)
-#  print(remLength)
   nLandSec = math.ceil(remLength/secLen)
   for j in range(nLandSec+1):
     i = j + topCurveEnd-1
@@ -117,14 +83,6 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
   
   i+=1
   landEnd=i+1
-  
-#  fig4, ax4 = plt.subplots()
-#  ax4.plot(ptsTmp[0,0:faceCurveEnd],ptsTmp[1,0:faceCurveEnd],'ro', label='faceCurve')
-#  ax4.plot(ptsTmp[0,faceCurveEnd:faceEnd],ptsTmp[1,faceCurveEnd:faceEnd],'mo', label='face')
-#  ax4.plot(ptsTmp[0,topCurveStart:topCurveEnd],ptsTmp[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
-#  ax4.plot(ptsTmp[0,topCurveEnd:landEnd],ptsTmp[1,topCurveEnd:landEnd],'co', label='land')
-#  ax4.plot(ptsTmp[0,0:landEnd],ptsTmp[1,0:landEnd],'k+',label='all')
-#  ax4.grid()
   
   for j in range(nLandCurveSec+1):
     i = j + landEnd-1
