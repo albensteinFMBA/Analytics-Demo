@@ -167,9 +167,9 @@ def mk_trpl(startX_ft=0,gap_ft=60):
   
   return pts
 
-def mk_onoff(startX_ft=0,gap_ft=60):
-  startX_ft=0
-  gap_ft = 10
+def mk_onoff(startX_ft=0,gap_ft=10):
+#  startX_ft=0
+#  gap_ft = 10
   pts1 = mk_jump(30,30,3)
   pts1[0,:] += startX_ft
   pts2 = mk_jump(20,20,4,flat_ft=15)
@@ -184,7 +184,7 @@ def mk_onoff(startX_ft=0,gap_ft=60):
 
 
 def mk_trk1(units='ft'): #just a triple jump
-  pts1 = mk_flat(endX_ft=30)
+  pts1 = mk_flat(endX_ft=60)
   pts2 = mk_trpl(startX_ft=(pts1[0,-1]+secLen))
   pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=30)
   
@@ -192,6 +192,20 @@ def mk_trk1(units='ft'): #just a triple jump
   if units == 'm':
     pts = convert_units_to_meters(pts)
   
+  return pts
+
+def mk_trk2(units='ft'): #in run, triple, onoff, triple
+  pts1 = mk_flat(endX_ft=60)
+  pts2 = mk_trpl(startX_ft=(pts1[0,-1]+secLen))
+  pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=20)
+  pts4 = mk_onoff(startX_ft=(pts3[0,-1]+secLen))
+  pts5 = mk_flat(startX_ft=(pts4[0,-1]+secLen),len_ft=20)
+  pts6 = mk_trpl(startX_ft=(pts5[0,-1]+secLen))
+  pts7 = mk_flat(startX_ft=(pts6[0,-1]+secLen),len_ft=30)
+  
+  pts = np.concatenate((pts1, pts2, pts3, pts4, pts5, pts6, pts7), axis=1)
+  if units == 'm':
+    pts = convert_units_to_meters(pts)
   
   return pts
 
@@ -209,8 +223,8 @@ if __name__ == '__main__':
 #  pts = mk_jump(face_deg, land_deg, height_ft)
 #  pts = mk_trpl()
 #  pts = mk_onoff()
-  pts = mk_trk1()
-  pts_m = mk_trk1(units='m')
+  pts = mk_trk2()
+  pts_m = mk_trk2(units='m')
   
   
   
@@ -222,8 +236,8 @@ if __name__ == '__main__':
 #  ax5.plot(pts[0,topCurveStart:topCurveEnd],pts[1,topCurveStart:topCurveEnd],'bo', label='topCurve')
 #  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
 #  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
-  ax5.plot(pts[0,:],pts[1,:],'co',label='ft')
-  ax5.plot(pts_m[0,:],pts_m[1,:],'k+',label='m')
+  ax5.plot(pts[0,:],pts[1,:],label='ft')
+#  ax5.plot(pts_m[0,:],pts_m[1,:],'k+',label='m')
   ax5.grid()
   ax5.legend()
   print(pts[1,-1])
