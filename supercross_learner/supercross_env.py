@@ -31,8 +31,9 @@ class supercross_env:
     self.nu = 0.7
     
     # define simulation
+    self.t_end = 200
     self.dt = 0.001
-    self.t=np.arange(0,200,self.dt)
+    self.t=np.arange(0,self.t_end,self.dt)
   
     # defined track
     # pts = mk_trk2(units='m')
@@ -83,7 +84,7 @@ class supercross_env:
     # step ahead in time
     
     # break if time has reached end of preallocated results vectors or out of track length
-    if (self.bkX[self.i] >= self.trkX[-1]):
+    if (self.t[self.i] >= self.t_end) or (self.bkX[self.i] >= self.trkX[-1]):
       self.done = True
       self.time = self.t[self.i]
       return
