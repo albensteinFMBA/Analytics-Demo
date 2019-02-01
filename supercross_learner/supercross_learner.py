@@ -7,6 +7,7 @@ from supercross_track_maker import mk_trk1, mk_trk2
 from supercross_env import supercross_env
 from supercross_utilities import max_dict, random_action
 import copy
+import time
 
 # define common hyperparameters
 GAMMA = 0.9
@@ -89,7 +90,7 @@ def getQs(model, s):
 
 
 if __name__ == '__main__':
-  
+  startTime=time.time()
   # AGENT 001: sweet of const thrttle over episode
   trk = mk_trk2(units='m')
   env  = supercross_env(trk)
@@ -134,12 +135,15 @@ if __name__ == '__main__':
   t = 1.0
   t2 = 1.0
   deltas = []
-  for it in range(200):
+  for it in range(2000):
     if it % 100 == 0:
       t += 0.01
       t2 += 0.01
-#    if it % 10 == 0:
-    print("it:", it)
+    if it % 100 == 0:
+      print("it:", it)
+      checkPointTime=time.time()
+      exeTime = (checkPointTime - startTime)
+      print("cummulative execution time:", exeTime)
     alpha = ALPHA / t2
     
     # start episode
@@ -159,7 +163,8 @@ if __name__ == '__main__':
     biggest_change = 0
     while not env2.done:
       env2.step(a)
-      print(env2.time)
+#      print("a:", a)
+#      print("sim time:", env2.t[env2.i])
       r = env2.reward
       s2 = agtSarsa11.getState(env2)
 
