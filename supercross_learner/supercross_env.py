@@ -70,6 +70,7 @@ class supercross_env:
     self.sFt = np.zeros(self.t.size)
     self.bkDragX = np.zeros(self.t.size)
     self.bkDragY = np.zeros(self.t.size)
+    self.trkYt = np.zeros(self.t.size)
     
     # time step tracker
     self.i = 0
@@ -144,7 +145,7 @@ class supercross_env:
     
     
     # find track elevation at this time step and next time steo
-    self.trkYt = np.interp(self.bkX[self.i],self.trkX,self.trkY)
+    self.trkYt[self.i] = np.interp(self.bkX[self.i],self.trkX,self.trkY)
     self.trkYt2 = np.interp(self.bkX[self.i+1],self.trkX,self.trkY)
     
     # detect whether the bike and wheel will still be in contact with ground next time step

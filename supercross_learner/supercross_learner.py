@@ -15,33 +15,75 @@ ALPHA = 0.1
 # AGENT 001: full throttle until end of track
   
 # AGENT 002: semi-grad SARSA, with feature vector fv001
-class Agent002:
-  def __init__(self):
-    self.theta = np.random.randn(5) / np.sqrt(5)
+class AgentAprxSmGrdSarsa:
+  def __init__(self, sLvl, xLvl):
+    self.sLvl = sLvl
+    self.xLvl = xLvl
+    # sLvlDict keeps track of the number of data streams used to create the "state"
+    # we use a dict since there may be 2 different formulations of the state with same number of data streams
+    self.sLvlDict = {}
+    self.sLvlDict[1] = 6
+    self.sLvlDict[2] = 4
+    # xLvl keeps track of the number of bins used to differentiate the action space
+    # this is just an integer, and hence always unique, so no dict required
 
-  def sa2x(self, env, a):
-    return np.array([
-      a,
-      env.bkvX[env.i],
-      env.bkvY[env.i],
-      env.bkY[env.i],
-      env.trkYt,
-    ])
+    # we can then use the dimensions of the sLvl and xLvl to create the dimension of theta and x
+    self.theta_dim = self.sLvlDict[sLvl] * xLvl
+    self.theta = np.random.randn(self.theta_dim) / np.sqrt(self.theta_dim)
+  
+  def getState(self, env):
+    # the "state" is defined in the agent class since the environment has many data streams, 
+    # and any combination of these streams could be used to create a "state", so called feature egineering
+    # Agents are differentiated by:
+    # 1] how they define the state using enviroment data, 
+    # 2] what they do with that state information to create actions
+    if self.sLvl == 1:
+      s = np.array([
+        env.bkaX[env.i],
+        env.bkaY[env.i],
+        env.bkvX[env.i],
+        env.bkvY[env.i],
+        env.bkY[env.i],
+        env.trkYt[env.i],
+      ])
+    elif self.sLvl == 2:
+      s = np.array([
+        env.bkaX[env.i],
+        env.bkaY[env.i],
+        env.bkY[env.i],
+        env.trkYt[env.i],
+      ])
+    return s
+  
+  def sa2x(self, s, a):
+#    x = np.concatenate((a,s),axis=1)
+    if self.xLvl == 1:
+      x = s
+    else:
+      x = np.zeros((s.size * self.xLvl,1))
+      for n in range(self.xLvl):
+        if a < (n+1)*(1/self.xLvl):
+          startIdx = (n)*s
+          endIdx = (n+1)*s
+          x[startIdx:endIdx] = s      
+    return x
 
-  def predict(self, env, a):
-    x = self.sa2x(env, a)
-    return self.theta.dot(x)
+  def predict(self, s, a):
+    x = self.sa2x(s, a)
+    prediction = self.theta.dot(x)
+    return prediction
 
-  def grad(self, env, a):
-    return self.sa2x(env, a)
+  def grad(self, s, a):
+    grad = self.sa2x(s, a)
+    return grad
 
 
-def getQs(model, env):
+def getQs(model, s):
   # we need Q(s,a) to choose an action
   # i.e. a = argmax[a]{ Q(s,a) }
   Qs = {}
   for a in np.arange(0,1,0.01):
-    q_sa = model.predict(env, a)
+    q_sa = model.predict(s, a)
     Qs[a] = q_sa
   return Qs 
 
@@ -55,7 +97,7 @@ if __name__ == '__main__':
   score = {}
   best_score = -1e9
   worst_score = 0
-  for a in np.arange(0.4,1.01,0.01):
+  for a in np.array([0.4, 0.98, 1]):
     env.__init__(trk)
     print(a)
     while not env.done:
@@ -76,68 +118,87 @@ if __name__ == '__main__':
   
   print(worst_action)
   print(best_action)
-  fig2, ax2 = plt.subplots()
-  ax2.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
-  ax2.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
-  ax2.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
-  ax2.plot(env.bkX[0:env.i],env.bkY[0:env.i], label='bk_full')
-  ax2.legend()
+#  fig2, ax2 = plt.subplots()
+#  ax2.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
+#  ax2.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
+#  ax2.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
+#  ax2.plot(env.bkX[0:env.i],env.bkY[0:env.i], label='bk_full')
+#  ax2.legend()
   
   
   # AGENT 002: semi-grad SARSA, with feature vector fv001
-#  env2  = supercross_env(trk)
-#  agent002 = Agent002()
-#  
-#  # repeat until convergence
-#  t = 1.0
-#  t2 = 1.0
-#  deltas = []
-#  for it in range(20000):
-#    if it % 100 == 0:
-#      t += 0.01
-#      t2 += 0.01
-#    if it % 1000 == 0:
-#      print("it:", it)
-#    alpha = ALPHA / t2
-#
-#    # get Q(s) so we can choose the first action
-#    Qs = getQs(agent002, env2)
-#
-#    # the first (s, r) tuple is the state we start in and 0
-#    # (since we don't get a reward) for simply starting the game
-#    # the last (s, r) tuple is the terminal state and the final reward
-#    # the value for the terminal state is by definition 0, so we don't
-#    # care about updating it.
-#    a = max_dict(Qs)[0]
-#    a = random_action(a, eps=0.5/t) # epsilon-greedy
-#    biggest_change = 0
-#    while not env2.done:
-#      r = grid.move(a)
-#      s2 = grid.current_state()
-#
-#      # we need the next action as well since Q(s,a) depends on Q(s',a')
-#      # if s2 not in policy then it's a terminal state, all Q are 0
-#      old_theta = model.theta.copy()
-#      if grid.is_terminal(s2):
-#        model.theta += alpha*(r - model.predict(s, a))*model.grad(s, a)
-#      else:
-#        # not terminal
-#        Qs2 = getQs(model, s2)
-#        a2 = max_dict(Qs2)[0]
-#        a2 = random_action(a2, eps=0.5/t) # epsilon-greedy
-#
-#        # we will update Q(s,a) AS we experience the episode
-#        model.theta += alpha*(r + GAMMA*model.predict(s2, a2) - model.predict(s, a))*model.grad(s, a)
-#        
-#        # next state becomes current state
-#        s = s2
-#        a = a2
-#
-#      biggest_change = max(biggest_change, np.abs(model.theta - old_theta).sum())
-#    deltas.append(biggest_change)
-#
-#  plt.plot(deltas)
-#  plt.show()
+  env2  = supercross_env(trk)
+  agtSarsa11 = AgentAprxSmGrdSarsa(sLvl=1, xLvl=1)
+  
+  # repeat until convergence
+  t = 1.0
+  t2 = 1.0
+  deltas = []
+  for it in range(200):
+    if it % 100 == 0:
+      t += 0.01
+      t2 += 0.01
+#    if it % 10 == 0:
+    print("it:", it)
+    alpha = ALPHA / t2
+    
+    # start episode
+    env2.__init__(trk)
+    s = agtSarsa11.getState(env2)
+    
+    # get Q(s) so we can choose the first action
+    Qs = getQs(agtSarsa11, s)
+
+    # the first (s, r) tuple is the state we start in and 0
+    # (since we don't get a reward) for simply starting the game
+    # the last (s, r) tuple is the terminal state and the final reward
+    # the value for the terminal state is by definition 0, so we don't
+    # care about updating it.
+    a = max_dict(Qs)[0]
+    a = random_action(a, eps=0.5/t) # epsilon-greedy
+    biggest_change = 0
+    while not env2.done:
+      env2.step(a)
+      print(env2.time)
+      r = env2.reward
+      s2 = agtSarsa11.getState(env2)
+
+      # we need the next action as well since Q(s,a) depends on Q(s',a')
+      # if s2 not in policy then it's a terminal state, all Q are 0
+      old_theta = agtSarsa11.theta.copy()
+      if env2.done:
+        agtSarsa11.theta += alpha*(r - agtSarsa11.predict(s, a))*agtSarsa11.grad(s, a)
+      else:
+        # not terminal
+        Qs2 = getQs(agtSarsa11, s2)
+        a2 = max_dict(Qs2)[0]
+        a2 = random_action(a2, eps=0.5/t) # epsilon-greedy
+
+        # we will update Q(s,a) AS we experience the episode
+        agtSarsa11.theta += alpha*(r + GAMMA*agtSarsa11.predict(s2, a2) - agtSarsa11.predict(s, a))*agtSarsa11.grad(s, a)
+        
+        # next state becomes current state
+        s = s2
+        a = a2
+
+      biggest_change = max(biggest_change, np.abs(agtSarsa11.theta - old_theta).sum())
+    deltas.append(biggest_change)
+
+  
+  
+
+  
+  
+  fig3, ax3 = plt.subplots()
+  ax3.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
+  ax3.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
+  ax3.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
+  ax3.plot(env2.bkX[0:env2.i],env2.bkY[0:env2.i], label='bk_agtSarsa11')
+  ax3.legend()
+  
+  fig4, ax4 = plt.subplots()
+  ax4.plot(deltas, label='deltas')
+  ax3.legend()
   
   
   # plot positioins vs time
