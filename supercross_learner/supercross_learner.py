@@ -18,16 +18,22 @@ ALPHA = 0.1
 # AGENT 002: semi-grad SARSA, with feature vector fv001
 class AgentAprxSmGrdSarsa:
   def __init__(self, sLvl, xLvl):
-    self.sLvl = sLvl
-    self.xLvl = xLvl
     # sLvlDict keeps track of the number of data streams used to create the "state"
     # we use a dict since there may be 2 different formulations of the state with same number of data streams
+    self.sLvl = sLvl
     self.sLvlDict = {}
     self.sLvlDict[1] = 6
     self.sLvlDict[2] = 4
+    self.sLvlDict[3] = 36 # added trank elevation samples
+    # initialize a vector of "feature extremes", values used for the min/max inputs to min-max normalization.
+    # initialize to 0.01, and learn the exetreme for each as the game in played.
+    self.sNorm = np.multiply(0.01,  np.ones(self.sLvlDict[self.sLvl]))
     # xLvl keeps track of the number of bins used to differentiate the action space
-    # this is just an integer, and hence always unique, so no dict required
-
+    if xLvl == -1:
+      self.xLvlArr = np.concatenate((np.arange(0,0.5,0.1),np.arange(0.5,1.02,0.02)))
+      self.xLvl = self.xLvlArr.size
+    else:
+      self.xLvl = xLvl
     # we can then use the dimensions of the sLvl and xLvl to create the dimension of theta and x
     self.theta_dim = self.sLvlDict[sLvl] * xLvl
     self.theta = np.random.randn(self.theta_dim) / np.sqrt(self.theta_dim)
@@ -38,6 +44,9 @@ class AgentAprxSmGrdSarsa:
     # Agents are differentiated by:
     # 1] how they define the state using enviroment data, 
     # 2] what they do with that state information to create actions
+    # create a vector of feature magnitudes used for min-max normalization. 
+      # not sure if/how to use mean normalization since we dont have the features until we finish playing the game, at which point we dont need them anymore
+      # must define feature exetremums by estimation intially, and tune them as exereince grows
     if self.sLvl == 1:
       s = np.array([
         env.bkaX[env.i],
@@ -54,6 +63,34 @@ class AgentAprxSmGrdSarsa:
         env.bkY[env.i],
         env.trkYt[env.i],
       ])
+    elif self.sLvl == 3:
+      trkLookAheadDistTgt = 30 # meters of distance the agent sees ahead
+      trkLookAheadSampleDist = 1 # meters of track distance between each track sample point "seen" by agent
+      if trkLookAheadDistTgt > env.trkX[-1]:
+        # if the end of track is clser than the agent look ahead distance, only samepl track elevenation to end of track
+        trkLookAheadSamples = np.arange(env.bkX[env.i], env.bkX[-1], 1)
+        trkFeatures = np.interp(trkLookAheadSamples,env.trkX,env.trkY)
+        # however, since agent feature vector size must be constant, and fed information represeenting the "same feature" for each learn pass, concat zeros to represent that track is flat beyond the end
+        missingZeros = trkLookAheadDistTgt/trkLookAheadSampleDist - trkFeatures.size
+        trkFeatures = np.concatenate((trkFeatures, np.zeros([missingZeros])))
+      else:
+        trkLookAheadSamples = np.arange(env.bkX[env.i], env.bkX[env.i] + trkLookAheadDistTgt, trkLookAheadSampleDist)
+        trkFeatures = np.interp(trkLookAheadSamples,env.trkX,env.trkY)
+      motionFeatures = np.array([
+                                    1, # bias term
+                                    env.bkaX[env.i],
+                                    env.bkaY[env.i],
+                                    env.bkvX[env.i],
+                                    env.bkvY[env.i],
+                                    env.bkY[env.i],
+                                    ])
+      s = np.concatenate((motionFeatures, trkFeatures))
+      
+      # update sNorm
+      
+      # normalize elements of s
+      
+      # end self.sLvl == 3:
     return s
   
   def sa2x(self, s, a):
@@ -61,11 +98,11 @@ class AgentAprxSmGrdSarsa:
     if self.xLvl == 1:
       x = s
     else:
-      x = np.zeros((s.size * self.xLvl,1))
+      x = np.zeros((s.size * self.xLvl))
       for n in range(self.xLvl):
         if a < (n+1)*(1/self.xLvl):
-          startIdx = (n)*s
-          endIdx = (n+1)*s
+          startIdx = (n)*s.size
+          endIdx = (n+1)*s.size
           x[startIdx:endIdx] = s      
     return x
 
@@ -129,7 +166,7 @@ if __name__ == '__main__':
   
   # AGENT 002: semi-grad SARSA, with feature vector fv001
   env2  = supercross_env(trk)
-  agtSarsa11 = AgentAprxSmGrdSarsa(sLvl=1, xLvl=1)
+  agtSarsa15 = AgentAprxSmGrdSarsa(sLvl=1, xLvl=5)
   
   # repeat until convergence
   t = 1.0
@@ -148,10 +185,10 @@ if __name__ == '__main__':
     
     # start episode
     env2.__init__(trk)
-    s = agtSarsa11.getState(env2)
+    s = agtSarsa15.getState(env2)
     
     # get Q(s) so we can choose the first action
-    Qs = getQs(agtSarsa11, s)
+    Qs = getQs(agtSarsa15, s)
 
     # the first (s, r) tuple is the state we start in and 0
     # (since we don't get a reward) for simply starting the game
@@ -166,27 +203,27 @@ if __name__ == '__main__':
 #      print("a:", a)
 #      print("sim time:", env2.t[env2.i])
       r = env2.reward
-      s2 = agtSarsa11.getState(env2)
+      s2 = agtSarsa15.getState(env2)
 
       # we need the next action as well since Q(s,a) depends on Q(s',a')
       # if s2 not in policy then it's a terminal state, all Q are 0
-      old_theta = agtSarsa11.theta.copy()
+      old_theta = agtSarsa15.theta.copy()
       if env2.done:
-        agtSarsa11.theta += alpha*(r - agtSarsa11.predict(s, a))*agtSarsa11.grad(s, a)
+        agtSarsa15.theta += alpha*(r - agtSarsa15.predict(s, a))*agtSarsa15.grad(s, a)
       else:
         # not terminal
-        Qs2 = getQs(agtSarsa11, s2)
+        Qs2 = getQs(agtSarsa15, s2)
         a2 = max_dict(Qs2)[0]
         a2 = random_action(a2, eps=0.5/t) # epsilon-greedy
 
         # we will update Q(s,a) AS we experience the episode
-        agtSarsa11.theta += alpha*(r + GAMMA*agtSarsa11.predict(s2, a2) - agtSarsa11.predict(s, a))*agtSarsa11.grad(s, a)
+        agtSarsa15.theta += alpha*(r + GAMMA*agtSarsa15.predict(s2, a2) - agtSarsa15.predict(s, a))*agtSarsa15.grad(s, a)
         
         # next state becomes current state
         s = s2
         a = a2
 
-      biggest_change = max(biggest_change, np.abs(agtSarsa11.theta - old_theta).sum())
+      biggest_change = max(biggest_change, np.abs(agtSarsa15.theta - old_theta).sum())
     deltas.append(biggest_change)
 
   
@@ -198,7 +235,7 @@ if __name__ == '__main__':
   ax3.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
   ax3.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
   ax3.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
-  ax3.plot(env2.bkX[0:env2.i],env2.bkY[0:env2.i], label='bk_agtSarsa11')
+  ax3.plot(env2.bkX[0:env2.i],env2.bkY[0:env2.i], label='bk_agtSarsa15')
   ax3.legend()
   
   fig4, ax4 = plt.subplots()
