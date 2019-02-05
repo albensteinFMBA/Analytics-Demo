@@ -31,7 +31,7 @@ class supercross_env:
     self.nu = 0.7
     
     # define simulation
-    self.t_end = 200
+    self.t_end = 30
     self.dt = 0.001
     self.t=np.arange(0,self.t_end,self.dt)
   
@@ -40,6 +40,7 @@ class supercross_env:
     self.trkStep = 0.05
     self.trkX = np.arange(trk[0,0],trk[0,-1],0.05)
     self.trkY = np.interp(self.trkX,trk[0,:],trk[1,:])
+    self.trkYmax = np.max(self.trkY)
     #fig12, ax12 = plt.subplots()
     #ax12.plot(trkX,trkY, label='trk')
   
