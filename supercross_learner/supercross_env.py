@@ -40,7 +40,10 @@ class supercross_env:
     self.trkStep = 0.05
     self.trkX = np.arange(trk[0,0],trk[0,-1],0.05)
     self.trkY = np.interp(self.trkX,trk[0,:],trk[1,:])
+    # some track data for other computation outside the env
     self.trkYmax = np.max(self.trkY)
+    self.trkXSampled = self.trkX[0::10]
+    self.trkYSampled = self.trkY[0::10]
     #fig12, ax12 = plt.subplots()
     #ax12.plot(trkX,trkY, label='trk')
   
@@ -72,6 +75,7 @@ class supercross_env:
     self.bkDragX = np.zeros(self.t.size)
     self.bkDragY = np.zeros(self.t.size)
     self.trkYt = np.zeros(self.t.size)
+    self.throttle = np.zeros(self.t.size)
     
     # time step tracker
     self.i = 0
@@ -83,6 +87,8 @@ class supercross_env:
   
   # define physics (i.e. rules) of the environment, and how the agents actions impact the environment
   def step(self,throttle):
+    # save action
+    self.throttle[self.i] = throttle
     # step ahead in time
     
     # break if time has reached end of preallocated results vectors or out of track length

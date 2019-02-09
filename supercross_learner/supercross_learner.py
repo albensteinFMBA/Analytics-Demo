@@ -3,6 +3,7 @@ import numpy as np
 #import math as math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.cm as cm
 from supercross_track_maker import mk_trk1, mk_trk2
 from supercross_env import supercross_env
 from supercross_utilities import max_dict, random_action
@@ -29,7 +30,7 @@ class AgentAprxSmGrdSarsa:
     # initialize to 0.01, and learn the exetreme for each as the game is played.
     self.sNorm = np.multiply(0.01,  np.ones(self.sLvlDict[self.sLvl]))
     # xLvl keeps track of the number of bins used to differentiate the action space
-    if xLvl == -1:
+    if xLvl == -1 or xLvl == 2:
       self.xLvlArr = np.concatenate((np.arange(0.2,0.5,0.1),np.arange(0.5,1.05,0.05)))
       self.xLvl = self.xLvlArr.size
     else:
@@ -63,7 +64,7 @@ class AgentAprxSmGrdSarsa:
         env.bkY[env.i],
         env.trkYt[env.i],
       ])
-    elif self.sLvl == 3:
+    elif self.sLvl == 3 or self.sLvl == 4:
       trkLookAheadDistTgt = 30 # meters of distance the agent sees ahead
       trkLookAheadSampleDist = 1 # meters of track distance between each track sample point "seen" by agent
       if trkLookAheadDistTgt > env.trkX[-1]:
@@ -73,9 +74,13 @@ class AgentAprxSmGrdSarsa:
         # however, since agent feature vector size must be constant, and fed information represeenting the "same feature" for each learn pass, concat zeros to represent that track is flat beyond the end
         missingZeros = trkLookAheadDistTgt/trkLookAheadSampleDist - trkFeatures.size
         trkFeatures = np.concatenate((trkFeatures, np.zeros([missingZeros])))
+        if trkFeatures.size > 30:
+          trkFeatures = trkFeatures[0:30]
       else:
         trkLookAheadSamples = np.arange(env.bkX[env.i], env.bkX[env.i] + trkLookAheadDistTgt, trkLookAheadSampleDist)
         trkFeatures = np.interp(trkLookAheadSamples,env.trkX,env.trkY)
+        if trkFeatures.size > 30:
+          trkFeatures = trkFeatures[0:30]
       trkNorm = np.multiply(env.trkYmax, np.ones(trkFeatures.size))
       
       motionFeatures = np.array([
@@ -89,20 +94,21 @@ class AgentAprxSmGrdSarsa:
       
       # create non-normalized state vector
       s = np.concatenate((motionFeatures, trkFeatures))
-      # update sNorm
-      self.sNorm = np.maximum(self.sNorm, np.absolute(np.concatenate(motionFeatures, trkNorm)))
-      # normalize elements of s. https://en.wikipedia.org/wiki/Feature_scaling
-      s = (s - self.sNorm*-1)/(self.sNorm*2)
+      if self.sLvl == 3:
+        # update sNorm
+        self.sNorm = np.maximum(self.sNorm, np.absolute(np.concatenate((motionFeatures, trkNorm))))
+        # normalize elements of s. https://en.wikipedia.org/wiki/Feature_scaling
+        s = (s - self.sNorm*-1)/(self.sNorm*2)
       # end self.sLvl == 3:
     return s
   
   def sa2x(self, s, a):
 #    x = np.concatenate((a,s),axis=1)
-    if self.xLvl == 1:
+    if self.xLvl == 1 or self.xLvl == 1:
       x = s
-    else:
+    elif self.xLvl == -1:
       x = np.zeros((s.size * self.xLvl))
-      for n in range(self.xLvlArr):
+      for n in range(self.xLvlArr.size):
         binLim = self.xLvlArr[n]
         if a < binLim:
           startIdx = (n)*s.size
@@ -141,7 +147,7 @@ def selectAction(offpolicyactions,it,Qs,t):
 if __name__ == '__main__':
   startTime=time.time()
   # AGENT 001: sweet of const thrttle over episode
-  trk = mk_trk2(units='m')
+  trk = mk_trk1(units='m')
   env  = supercross_env(trk)
   
   score = {}
@@ -178,18 +184,21 @@ if __name__ == '__main__':
   
   # AGENT 002: semi-grad SARSA, with feature vector fv001
   env2  = supercross_env(trk)
-  agtSarsa = AgentAprxSmGrdSarsa(sLvl=3, xLvl=-1)
+  agtSarsa = AgentAprxSmGrdSarsa(sLvl=4, xLvl=2)
   offpolicyactions = agtSarsa.xLvlArr[agtSarsa.xLvlArr>0.4]
   offpolicyactions = np.repeat(offpolicyactions,4)
   
   # repeat until convergence
-  totalIterations = 4000
+  totalIterations = 2000
   t = 1.0
   t2 = 1.0
   deltas = []
-  bkY_mat = np.zeros([env2.bkX.size, totalIterations])
-  a_mat = np.zeros([env2.bkX.size, totalIterations])
-  theta_mat = np.zeros([env2.bkX.size, totalIterations])
+  bkY_mat = np.zeros([env2.trkXSampled.size, totalIterations])
+  throttle_mat = np.zeros([env2.trkXSampled.size, totalIterations])
+  theta_mat = np.zeros([agtSarsa.theta.size, totalIterations])
+  raceTimes = []
+  bestTime = env2.t_end
+  bestTimeIt = 0
   for it in range(totalIterations):
     if it % 100 == 0:
       t += 0.01
@@ -214,8 +223,6 @@ if __name__ == '__main__':
     # the value for the terminal state is by definition 0, so we don't
     # care about updating it.
     a = selectAction(offpolicyactions,it,Qs,t)
-    a_v = []
-    a_v.append(a)
     biggest_change = 0
     while not env2.done:
       env2.step(a)
@@ -240,30 +247,53 @@ if __name__ == '__main__':
         # next state becomes current state
         s = s2
         a = a2
-        a_v.append(a)
 
       biggest_change = max(biggest_change, np.abs(agtSarsa.theta - old_theta).sum())
+    if env2.time < bestTime:
+      print('new best time', env2.time)
+      bestTime = env2.time
+      bestTimeIt = it
+    raceTimes.append(env2.time)
     deltas.append(biggest_change)
-    bkY_mat[:,it] = np.interp(env2.trkX,env2.bkX, env2.bkY)
-    a_mat[:,it] = np.interp(env2.trkX,env2.bkX, a_v)
+    
+    bkY_mat[:,it] = np.interp(env2.trkXSampled,env2.bkX[0:env2.i],env2.bkY[0:env2.i])
+    throttle_mat[:,it] = np.interp(env2.trkXSampled,env2.bkX[0:env2.i], env2.throttle[0:env2.i])
     theta_mat[:,it] = agtSarsa.theta
   
 
   np.save('bkY_mat',bkY_mat)
-  np.save('a_mat',a_mat)
+  np.save('throttle_mat',throttle_mat)
   np.save('theta_mat',theta_mat)
   
   fig3, ax3 = plt.subplots()
   ax3.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
   ax3.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
   ax3.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
-  ax3.plot(env2.bkX[0:env2.i],env2.bkY[0:env2.i], label='bk_agtSarsa')
+  ax3.plot(env2.trkXSampled,bkY_mat[:,bestTimeIt], label='bk_agtSarsa_bestTime')
   ax3.legend()
   
   fig4, ax4 = plt.subplots()
   ax4.plot(deltas, label='deltas')
-  ax3.legend()
+  ax4.legend()
   
+  fig5, ax5 = plt.subplots()
+  ax5.plot(raceTimes, label='raceTimes')
+  ax5.legend()
+  
+  plt3dX_bkX, plt3dX_it = np.meshgrid(env2.trkXSampled, np.arange(0,it+1,1))
+  fig6 = plt.figure()
+  ax6 = fig6.add_subplot(111, projection='3d')
+  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T)
+  
+  fig7 = plt.figure()
+  ax7 = fig7.add_subplot(111, projection='3d')
+  ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T)
+  
+  plt3dX_theta, plt3dX_it = np.meshgrid(np.arange(0,agtSarsa.theta.size,1), np.arange(0,it+1,1))
+  
+  fig8 = plt.figure()
+  ax8 = fig8.add_subplot(111, projection='3d')
+  ax8.plot_surface(plt3dX_theta, plt3dX_it, theta_mat.T)
   
   # plot positioins vs time
   #fig1, ax1 = plt.subplots()
