@@ -9,6 +9,7 @@ from supercross_env import supercross_env
 from supercross_utilities import max_dict, random_action
 import copy
 import time
+from math import isinf
 
 # define common hyperparameters
 GAMMA = 0.9
@@ -26,13 +27,17 @@ class AgentAprxSmGrdSarsa:
     self.sLvlDict[1] = 6
     self.sLvlDict[2] = 4
     self.sLvlDict[3] = 36 # added trank elevation samples
+    self.sLvlDict[4] = 36 # added trank elevation samples
     # initialize a vector of "feature extremes", values used for the min/max inputs to min-max normalization.
     # initialize to 0.01, and learn the exetreme for each as the game is played.
     self.sNorm = np.multiply(0.01,  np.ones(self.sLvlDict[self.sLvl]))
     # xLvl keeps track of the number of bins used to differentiate the action space
-    if xLvl == -1 or xLvl == 2:
+    if xLvl == -1:
       self.xLvlArr = np.concatenate((np.arange(0.2,0.5,0.1),np.arange(0.5,1.05,0.05)))
       self.xLvl = self.xLvlArr.size
+    elif xLvl == 2:
+      self.xLvlArr = np.concatenate((np.arange(0.2,0.5,0.1),np.arange(0.5,1.05,0.05)))
+      self.xLvl = 1
     else:
       self.xLvl = xLvl
     # we can then use the dimensions of the sLvl and xLvl to create the dimension of theta and x
@@ -94,26 +99,26 @@ class AgentAprxSmGrdSarsa:
       
       # create non-normalized state vector
       s = np.concatenate((motionFeatures, trkFeatures))
-      if self.sLvl == 3:
-        # update sNorm
-        self.sNorm = np.maximum(self.sNorm, np.absolute(np.concatenate((motionFeatures, trkNorm))))
-        # normalize elements of s. https://en.wikipedia.org/wiki/Feature_scaling
-        s = (s - self.sNorm*-1)/(self.sNorm*2)
+#      if self.sLvl == 3:
+      # update sNorm
+      self.sNorm = np.maximum(self.sNorm, np.absolute(np.concatenate((motionFeatures, trkNorm))))
+      # normalize elements of s. https://en.wikipedia.org/wiki/Feature_scaling
+      s = (s - self.sNorm*-1)/(self.sNorm*2)
       # end self.sLvl == 3:
     return s
   
   def sa2x(self, s, a):
-#    x = np.concatenate((a,s),axis=1)
-    if self.xLvl == 1 or self.xLvl == 1:
-      x = s
-    elif self.xLvl == -1:
-      x = np.zeros((s.size * self.xLvl))
-      for n in range(self.xLvlArr.size):
-        binLim = self.xLvlArr[n]
-        if a < binLim:
-          startIdx = (n)*s.size
-          endIdx = (n+1)*s.size
-          x[startIdx:endIdx] = s      
+#    if self.xLvl == 1 or self.xLvl == 2:
+#      x = s
+#    elif self.xLvl == -1:
+#      x = np.zeros((s.size * self.xLvl))
+#      for n in range(self.xLvlArr.size):
+#        binLim = self.xLvlArr[n]
+#        if a < binLim:
+#          startIdx = (n)*s.size
+#          endIdx = (n+1)*s.size
+#          x[startIdx:endIdx] = s
+    x = s      
     return x
 
   def predict(self, s, a):
@@ -153,6 +158,7 @@ if __name__ == '__main__':
   score = {}
   best_score = -1e9
   worst_score = 0
+  breakAll = False
   for a in np.array([0.4, 0.98, 1]):
     env.__init__(trk)
     print(a)
@@ -242,8 +248,8 @@ if __name__ == '__main__':
         a2 = selectAction(offpolicyactions,it,Qs2,t)
         
         # we will update Q(s,a) AS we experience the episode
+
         agtSarsa.theta += alpha*(r + GAMMA*agtSarsa.predict(s2, a2) - agtSarsa.predict(s, a))*agtSarsa.grad(s, a)
-        
         # next state becomes current state
         s = s2
         a = a2
@@ -253,6 +259,10 @@ if __name__ == '__main__':
       print('new best time', env2.time)
       bestTime = env2.time
       bestTimeIt = it
+    if breakAll:
+      break
+      
+      
     raceTimes.append(env2.time)
     deltas.append(biggest_change)
     
@@ -283,17 +293,17 @@ if __name__ == '__main__':
   plt3dX_bkX, plt3dX_it = np.meshgrid(env2.trkXSampled, np.arange(0,it+1,1))
   fig6 = plt.figure()
   ax6 = fig6.add_subplot(111, projection='3d')
-  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T)
+  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet)
   
   fig7 = plt.figure()
   ax7 = fig7.add_subplot(111, projection='3d')
-  ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T)
+  ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T, cmap=cm.jet)
   
   plt3dX_theta, plt3dX_it = np.meshgrid(np.arange(0,agtSarsa.theta.size,1), np.arange(0,it+1,1))
   
   fig8 = plt.figure()
   ax8 = fig8.add_subplot(111, projection='3d')
-  ax8.plot_surface(plt3dX_theta, plt3dX_it, theta_mat.T)
+  ax8.plot_surface(plt3dX_theta, plt3dX_it, theta_mat.T, cmap=cm.jet)
   
   # plot positioins vs time
   #fig1, ax1 = plt.subplots()
