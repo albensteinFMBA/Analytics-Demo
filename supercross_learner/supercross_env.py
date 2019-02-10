@@ -95,7 +95,11 @@ class supercross_env:
     if (self.t[self.i] >= self.t_end) or (self.bkX[self.i] >= self.trkX[-1]):
       self.done = True
       self.time = self.t[self.i]
+      self.reward = 1
       return
+    else:
+      # set reward to small negative value to encourage finishing race faster
+      self.reward = -self.dt
     
     # compute suspension forces. convention, extension=+ve, tension=-ve
     if self.i > 0:
@@ -180,9 +184,6 @@ class supercross_env:
     
     # increment time index
     self.i+=1
-    
-    # increment reward
-    self.reward -=1 # -1 for each time step that the race is not finished.
     
     return
 
