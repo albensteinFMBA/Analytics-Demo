@@ -195,7 +195,7 @@ if __name__ == '__main__':
   offpolicyactions = np.repeat(offpolicyactions,4)
   
   # repeat until convergence
-  totalIterations = 2000
+  totalIterations = 20000
   t = 1.0
   t2 = 1.0
   deltas = []
