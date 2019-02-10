@@ -119,8 +119,8 @@ def mk_trpl(startX_ft=0,gap_ft=60):
   jump1PkX = np.mean(pts1[0,:])
   pts3 = mk_jump(30, 10, 3, ctrX_ft=(jump1PkX+gap_ft)) 
   pts2 = mk_jump(30, 20, 4.5, ctrX_ft=(pts1[0,-1]+(pts3[0,0]-pts1[0,-1])/2))
-  ptsFlat1 = mk_flat(pts1[0,-1],pts2[0,0])
-  ptsFlat2 = mk_flat(pts2[0,-1],pts3[0,0])
+  ptsFlat1 = mk_flat(pts1[0,-1]+secLen,pts2[0,0])
+  ptsFlat2 = mk_flat(pts2[0,-1]+secLen,pts3[0,0])
   pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
   
   return pts
@@ -134,12 +134,17 @@ def mk_onoff(startX_ft=0,gap_ft=10):
   pts2[0,:] = pts2[0,:] + pts1[0,-1] + gap_ft
   pts3 = mk_jump(30,20,3)
   pts3[0,:] = pts3[0,:] + pts2[0,-1] + gap_ft
-  ptsFlat1 = mk_flat(pts1[0,-1],pts2[0,0])
-  ptsFlat2 = mk_flat(pts2[0,-1],pts3[0,0])
+  ptsFlat1 = mk_flat(pts1[0,-1]+secLen,pts2[0,0])
+  ptsFlat2 = mk_flat(pts2[0,-1]+secLen,pts3[0,0])
   pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
   
   return pts
 
+def addTrkGrad(pts):
+  grd = np.gradient(pts[1,:],pts[0,:])
+  pts = np.stack((pts[0,:],pts[1,:],grd),axis=0)
+  return pts
+  
 
 def mk_trk1(units='ft'): #just a triple jump
   pts1 = mk_flat(endX_ft=60)
@@ -149,6 +154,8 @@ def mk_trk1(units='ft'): #just a triple jump
   pts = np.concatenate((pts1, pts2, pts3), axis=1)
   if units == 'm':
     pts = convert_units_to_meters(pts)
+  
+  pts = addTrkGrad(pts)
   
   return pts
 
@@ -164,6 +171,8 @@ def mk_trk2(units='ft'): #in run, triple, onoff, triple
   pts = np.concatenate((pts1, pts2, pts3, pts4, pts5, pts6, pts7), axis=1)
   if units == 'm':
     pts = convert_units_to_meters(pts)
+  
+  pts = addTrkGrad(pts)
   
   return pts
 
@@ -181,8 +190,8 @@ if __name__ == '__main__':
 #  pts = mk_jump(face_deg, land_deg, height_ft)
 #  pts = mk_trpl()
 #  pts = mk_onoff()
-  pts = mk_trk2()
-  pts_m = mk_trk2(units='m')
+  pts = mk_trk1()
+#  pts_m = mk_trk2(units='m')
   
   
   
@@ -195,6 +204,7 @@ if __name__ == '__main__':
 #  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
 #  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
   ax5.plot(pts[0,:],pts[1,:],label='ft')
+  ax5.plot(pts[0,:],pts[2,:],label='grd')
 #  ax5.plot(pts_m[0,:],pts_m[1,:],'k+',label='m')
   ax5.grid()
   ax5.legend()
