@@ -156,8 +156,8 @@ if __name__ == '__main__':
   env  = supercross_env(trk)
   
   score = {}
-  best_score = -1e9
-  worst_score = 0
+  best_time = 1e9
+  worst_time = 0
   breakAll = False
   for a in np.array([0.4, 0.98, 1]):
     env.__init__(trk)
@@ -167,12 +167,12 @@ if __name__ == '__main__':
     print('done a race')
     print(env.reward)
     score[a] = env.reward
-    if env.reward > best_score:
+    if env.time < best_time:
       print('found better')
       best_score = env.reward
       env_best = copy.deepcopy(env)
       best_action = a
-    if env.reward < worst_score:
+    if env.time > worst_time:
       print('found worse')
       worst_score = env.reward
       env_worst = copy.deepcopy(env)
@@ -195,7 +195,7 @@ if __name__ == '__main__':
   offpolicyactions = np.repeat(offpolicyactions,4)
   
   # repeat until convergence
-  totalIterations = 20000
+  totalIterations = 5000
   t = 1.0
   t2 = 1.0
   deltas = []
@@ -274,6 +274,9 @@ if __name__ == '__main__':
   np.save('bkY_mat',bkY_mat)
   np.save('throttle_mat',throttle_mat)
   np.save('theta_mat',theta_mat)
+  np.save('raceTimes',raceTimes)
+  bestTime_mat = np.array([bestTime,bestTimeIt])
+  np.save('bestTime_mat',bestTime_mat)
   
   fig3, ax3 = plt.subplots()
   ax3.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
@@ -295,15 +298,24 @@ if __name__ == '__main__':
   ax6 = fig6.add_subplot(111, projection='3d')
   ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet)
   
+  fig6 = plt.figure()
+  ax6 = fig6.add_subplot(111, projection='3d')
+  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet)
+  
   fig7 = plt.figure()
   ax7 = fig7.add_subplot(111, projection='3d')
   ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T, cmap=cm.jet)
   
-  plt3dX_theta, plt3dX_it = np.meshgrid(np.arange(0,agtSarsa.theta.size,1), np.arange(0,it+1,1))
+  fig9 = plt.figure()
+  ax9 = fig9.add_subplot(111, projection='3d')
+  throttle_mat_T = throttle_mat.T.copy()
+  ax9.plot_surface(plt3dX_bkX[0:bestTimeIt+20,:], plt3dX_it[0:bestTimeIt+20,:], throttle_mat_T[0:bestTimeIt+20,:], cmap=cm.jet)
+  
+  plt3dT_theta, plt3dT_it = np.meshgrid(np.arange(0,agtSarsa.theta.size,1), np.arange(0,it+1,1))
   
   fig8 = plt.figure()
   ax8 = fig8.add_subplot(111, projection='3d')
-  ax8.plot_surface(plt3dX_theta, plt3dX_it, theta_mat.T, cmap=cm.jet)
+  ax8.plot_surface(plt3dT_theta, plt3dT_it, theta_mat.T, cmap=cm.jet)
   
   # plot positioins vs time
   #fig1, ax1 = plt.subplots()
