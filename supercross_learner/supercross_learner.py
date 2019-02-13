@@ -163,7 +163,7 @@ if __name__ == '__main__':
     env.__init__(trk)
     print(a)
     while not env.done:
-      env.step(a)
+      env.step(a,1)
     print('done a race')
     print(env.reward)
     score[a] = env.reward
@@ -195,7 +195,7 @@ if __name__ == '__main__':
   offpolicyactions = np.repeat(offpolicyactions,4)
   
   # repeat until convergence
-  totalIterations = 5000
+  totalIterations = 10000
   t = 1.0
   t2 = 1.0
   deltas = []
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     a = selectAction(offpolicyactions,it,Qs,t)
     biggest_change = 0
     while not env2.done:
-      env2.step(a)
+      env2.step(a,100)
 #      print("a:", a)
 #      print("sim time:", env2.t[env2.i])
       r = env2.reward

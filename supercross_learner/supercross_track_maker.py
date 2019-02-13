@@ -191,7 +191,7 @@ if __name__ == '__main__':
 #  pts = mk_trpl()
 #  pts = mk_onoff()
   pts = mk_trk1()
-#  pts_m = mk_trk2(units='m')
+  pts_m = mk_trk2(units='m')
   
   
   
