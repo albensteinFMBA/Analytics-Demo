@@ -182,6 +182,7 @@ if __name__ == '__main__':
   np.save('raceTimes',raceTimes)
   bestTime_mat = np.array([bestTime,bestTimeIt])
   np.save('bestTime_mat',bestTime_mat)
+  np.save('Q.npy',Q) # read_dictionary = np.load('my_file.npy').item()
   
   fig3, ax3 = plt.subplots()
   ax3.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
