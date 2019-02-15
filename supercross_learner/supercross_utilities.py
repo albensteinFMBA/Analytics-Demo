@@ -22,3 +22,17 @@ def random_action(a, eps=0.1, a_step=0.01):
     return a
   else:
     return np.random.choice(ALL_POSSIBLE_ACTIONS)
+  
+  
+class AutoDict(dict):
+  def __missing__(self, key):
+      x = AutoDict()
+      self[key] = x
+      return x
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
+    

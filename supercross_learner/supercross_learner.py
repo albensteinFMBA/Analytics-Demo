@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from supercross_track_maker import mk_trk1, mk_trk2
 from supercross_env import supercross_env
-from supercross_utilities import max_dict, random_action
+from supercross_utilities import max_dict, random_action, AutoDict, find_nearest
 import copy
 import time
 from math import isinf
@@ -15,144 +15,22 @@ from math import isinf
 GAMMA = 0.9
 ALPHA = 0.1
 
-# AGENT 001: full throttle until end of track
-  
-# AGENT 002: semi-grad SARSA, with feature vector fv001
-class AgentAprxSmGrdSarsa:
-  def __init__(self, sLvl, xLvl):
-    # sLvlDict keeps track of the number of data streams used to create the "state"
-    # we use a dict since there may be 2 different formulations of the state with same number of data streams
-    self.sLvl = sLvl
-    self.sLvlDict = {}
-    self.sLvlDict[1] = 6
-    self.sLvlDict[2] = 4
-    self.sLvlDict[3] = 36 # added trank elevation samples
-    self.sLvlDict[4] = 36 # added trank elevation samples
-    # initialize a vector of "feature extremes", values used for the min/max inputs to min-max normalization.
-    # initialize to 0.01, and learn the exetreme for each as the game is played.
-    self.sNorm = np.multiply(0.01,  np.ones(self.sLvlDict[self.sLvl]))
-    # xLvl keeps track of the number of bins used to differentiate the action space
-    if xLvl == -1:
-      self.xLvlArr = np.concatenate((np.arange(0.2,0.5,0.1),np.arange(0.5,1.05,0.05)))
-      self.xLvl = self.xLvlArr.size
-    elif xLvl == 2:
-      self.xLvlArr = np.concatenate((np.arange(0.2,0.5,0.1),np.arange(0.5,1.05,0.05)))
-      self.xLvl = 1
-    else:
-      self.xLvl = xLvl
-    # we can then use the dimensions of the sLvl and xLvl to create the dimension of theta and x
-    self.theta_dim = self.sLvlDict[sLvl] * self.xLvl
-    self.theta = np.random.randn(self.theta_dim) / np.sqrt(self.theta_dim)
-  
-  def getState(self, env):
-    # the "state" is defined in the agent class since the environment has many data streams, 
-    # and any combination of these streams could be used to create a "state", so called feature egineering
-    # Agents are differentiated by:
-    # 1] how they define the state using enviroment data, 
-    # 2] what they do with that state information to create actions
-    # create a vector of feature magnitudes used for min-max normalization. 
-      # not sure if/how to use mean normalization since we dont have the features until we finish playing the game, at which point we dont need them anymore
-      # must define feature exetremums by estimation intially, and tune them as exereince grows
-    if self.sLvl == 1:
-      s = np.array([
-        env.bkaX[env.i],
-        env.bkaY[env.i],
-        env.bkvX[env.i],
-        env.bkvY[env.i],
-        env.bkY[env.i],
-        env.trkYt[env.i],
-      ])
-    elif self.sLvl == 2:
-      s = np.array([
-        env.bkaX[env.i],
-        env.bkaY[env.i],
-        env.bkY[env.i],
-        env.trkYt[env.i],
-      ])
-    elif self.sLvl == 3 or self.sLvl == 4:
-      trkLookAheadDistTgt = 30 # meters of distance the agent sees ahead
-      trkLookAheadSampleDist = 1 # meters of track distance between each track sample point "seen" by agent
-      if trkLookAheadDistTgt > env.trkX[-1]:
-        # if the end of track is clser than the agent look ahead distance, only samepl track elevenation to end of track
-        trkLookAheadSamples = np.arange(env.bkX[env.i], env.bkX[-1], 1)
-        trkFeatures = np.interp(trkLookAheadSamples,env.trkX,env.trkY)
-        # however, since agent feature vector size must be constant, and fed information represeenting the "same feature" for each learn pass, concat zeros to represent that track is flat beyond the end
-        missingZeros = trkLookAheadDistTgt/trkLookAheadSampleDist - trkFeatures.size
-        trkFeatures = np.concatenate((trkFeatures, np.zeros([missingZeros])))
-        if trkFeatures.size > 30:
-          trkFeatures = trkFeatures[0:30]
-      else:
-        trkLookAheadSamples = np.arange(env.bkX[env.i], env.bkX[env.i] + trkLookAheadDistTgt, trkLookAheadSampleDist)
-        trkFeatures = np.interp(trkLookAheadSamples,env.trkX,env.trkY)
-        if trkFeatures.size > 30:
-          trkFeatures = trkFeatures[0:30]
-      trkNorm = np.multiply(env.trkYmax, np.ones(trkFeatures.size))
-      
-      motionFeatures = np.array([
-                                    1, # bias term
-                                    env.bkaX[env.i],
-                                    env.bkaY[env.i],
-                                    env.bkvX[env.i],
-                                    env.bkvY[env.i],
-                                    env.bkY[env.i],
-                                    ])
-      
-      # create non-normalized state vector
-      s = np.concatenate((motionFeatures, trkFeatures))
-#      if self.sLvl == 3:
-      # update sNorm
-      self.sNorm = np.maximum(self.sNorm, np.absolute(np.concatenate((motionFeatures, trkNorm))))
-      # normalize elements of s. https://en.wikipedia.org/wiki/Feature_scaling
-      s = (s - self.sNorm*-1)/(self.sNorm*2)
-      # end self.sLvl == 3:
-    return s
-  
-  def sa2x(self, s, a):
-#    if self.xLvl == 1 or self.xLvl == 2:
-#      x = s
-#    elif self.xLvl == -1:
-#      x = np.zeros((s.size * self.xLvl))
-#      for n in range(self.xLvlArr.size):
-#        binLim = self.xLvlArr[n]
-#        if a < binLim:
-#          startIdx = (n)*s.size
-#          endIdx = (n+1)*s.size
-#          x[startIdx:endIdx] = s
-    x = s      
-    return x
-
-  def predict(self, s, a):
-    x = self.sa2x(s, a)
-    prediction = self.theta.dot(x)
-    return prediction
-
-  def grad(self, s, a):
-    grad = self.sa2x(s, a)
-    return grad
 
 
-def getQs(model, s):
-  # we need Q(s,a) to choose an action
-  # i.e. a = argmax[a]{ Q(s,a) }
-  Qs = {}
-  for a in np.arange(0,1,0.01):
-    q_sa = model.predict(s, a)
-    Qs[a] = q_sa
-  return Qs 
-
-def selectAction(offpolicyactions,it,Qs,t):
+def selectAction(offpolicyactions,it,Q,sx,sy,t,bcA_v):
   if it < offpolicyactions.size:
       a = offpolicyactions[it]
   else:
-    a = max_dict(Qs)[0]
+    a, _ = max_dict(Q[sx][sy])
     a = random_action(a, eps=0.5/t) # epsilon-greedy
+    a = find_nearest(bcA_v, a)
   return a
 
 
 if __name__ == '__main__':
   startTime=time.time()
   # AGENT 001: sweet of const thrttle over episode
-  trk = mk_trk1(units='m')
+  trk = mk_trk2(units='m')
   env  = supercross_env(trk)
   
   score = {}
@@ -188,20 +66,44 @@ if __name__ == '__main__':
 #  ax2.legend()
   
   
-  # AGENT 002: semi-grad SARSA, with feature vector fv001
+  # AGENT 002: q-learing using X,Y position. 
+  # this will not be generalizable to any track, but a learning experience for me only, 
+  # just to see if this type of agent can learn to go fast.
   env2  = supercross_env(trk)
-  agtSarsa = AgentAprxSmGrdSarsa(sLvl=4, xLvl=2)
-  offpolicyactions = agtSarsa.xLvlArr[agtSarsa.xLvlArr>0.4]
-  offpolicyactions = np.repeat(offpolicyactions,4)
+  bcA_v = np.arange(0.01,1,0.05) # vector of bin centers for action dimension of Q table (3d matrix)
+  bcX_v = env2.trkXSampled
+  maxY = np.max(env2.trkY)
+  bcY_v = np.arange(0,maxY*2.5,0.5)
+  
+  # initialize Q(s,a)
+  Q = {}
+  # let's also keep track of how many times Q[s] has been updated
+  update_counts_s = {}
+  update_counts_sa = {}
+  for x in bcX_v:
+    Q[x] = {}
+    update_counts_s[x] = {}
+    update_counts_sa[x] = {}
+    for y in bcY_v:
+      Q[x][y] = {}
+      update_counts_s[x][y] = 0.0
+      update_counts_sa[x][y] = {}
+      for a in bcA_v:
+        Q[x][y][a] = 0.0
+        update_counts_sa[x][y][a] = 1.0
+        
+
+  # we'll start by running some races at const throttle to at least get some learning
+  offpolicyactions = np.extract(bcA_v>0.4,bcA_v)
+  offpolicyactions = np.repeat(offpolicyactions,100)
   
   # repeat until convergence
-  totalIterations = 10000
+  totalIterations = 50000
   t = 1.0
   t2 = 1.0
   deltas = []
   bkY_mat = np.zeros([env2.trkXSampled.size, totalIterations])
   throttle_mat = np.zeros([env2.trkXSampled.size, totalIterations])
-  theta_mat = np.zeros([agtSarsa.theta.size, totalIterations])
   raceTimes = []
   bestTime = env2.t_end
   bestTimeIt = 0
@@ -214,47 +116,52 @@ if __name__ == '__main__':
       checkPointTime=time.time()
       exeTime = (checkPointTime - startTime)
       print("cummulative execution time:", exeTime)
-    alpha = ALPHA / t2
     
     # start episode
     env2.__init__(trk)
-    s = agtSarsa.getState(env2)
     
-    # get Q(s) so we can choose the first action
-    Qs = getQs(agtSarsa, s)
 
     # the first (s, r) tuple is the state we start in and 0
     # (since we don't get a reward) for simply starting the game
     # the last (s, r) tuple is the terminal state and the final reward
     # the value for the terminal state is by definition 0, so we don't
     # care about updating it.
-    a = selectAction(offpolicyactions,it,Qs,t)
+    sx = find_nearest(bcX_v, env2.bkX[env2.i])
+    sy = find_nearest(bcY_v, env2.bkY[env2.i])
+    a, _ = max_dict(Q[sx][sy])
     biggest_change = 0
     while not env2.done:
+      # get state
+      sx = find_nearest(bcX_v, env2.bkX[env2.i])
+      sy = find_nearest(bcY_v, env2.bkY[env2.i])
+      # chose action
+      a = selectAction(offpolicyactions,it,Q,sx,sy,t,bcA_v)
+      # apply action and step env
       env2.step(a,100)
-#      print("a:", a)
-#      print("sim time:", env2.t[env2.i])
+      # get new state
+      sx2 = find_nearest(bcX_v, env2.bkX[env2.i])
+      sy2 = find_nearest(bcY_v, env2.bkY[env2.i])
+      # get reward
       r = env2.reward
-      s2 = agtSarsa.getState(env2)
 
-      # we need the next action as well since Q(s,a) depends on Q(s',a')
-      # if s2 not in policy then it's a terminal state, all Q are 0
-      old_theta = agtSarsa.theta.copy()
-      if env2.done:
-        agtSarsa.theta += alpha*(r - agtSarsa.predict(s, a))*agtSarsa.grad(s, a)
-      else:
-        # not terminal
-        Qs2 = getQs(agtSarsa, s2)
-        a2 = selectAction(offpolicyactions,it,Qs2,t)
-        
-        # we will update Q(s,a) AS we experience the episode
+      # adaptive learning rate
+      alpha = ALPHA / update_counts_sa[sx][sy][a]
+      update_counts_sa[sx][sy][a] += 0.005
 
-        agtSarsa.theta += alpha*(r + GAMMA*agtSarsa.predict(s2, a2) - agtSarsa.predict(s, a))*agtSarsa.grad(s, a)
-        # next state becomes current state
-        s = s2
-        a = a2
+      # we will update Q(s,a) AS we experience the episode
+      old_qsa = Q[sx][sy][a]
+      # the difference between SARSA and Q-Learning is with Q-Learning
+      # we will use this max[a']{ Q(s',a')} in our update
+      # even if we do not end up taking this action in the next step
+      a2, max_q_s2a2 = max_dict(Q[sx2][sy2])
+      Q[sx][sy][a] = Q[sx][sy][a] + alpha*(r + GAMMA*max_q_s2a2 - Q[sx][sy][a])
+      biggest_change = max(biggest_change, np.abs(old_qsa - Q[sx][sy][a]))
 
-      biggest_change = max(biggest_change, np.abs(agtSarsa.theta - old_theta).sum())
+      # we would like to know how often Q(s) has been updated too
+      update_counts_s[sx][sy] = update_counts_s[sx][sy] + 1
+
+
+
     if env2.time < bestTime:
       print('new best time', env2.time)
       bestTime = env2.time
@@ -268,12 +175,10 @@ if __name__ == '__main__':
     
     bkY_mat[:,it] = np.interp(env2.trkXSampled,env2.bkX[0:env2.i],env2.bkY[0:env2.i])
     throttle_mat[:,it] = np.interp(env2.trkXSampled,env2.bkX[0:env2.i], env2.throttle[0:env2.i])
-    theta_mat[:,it] = agtSarsa.theta
   
 
   np.save('bkY_mat',bkY_mat)
   np.save('throttle_mat',throttle_mat)
-  np.save('theta_mat',theta_mat)
   np.save('raceTimes',raceTimes)
   bestTime_mat = np.array([bestTime,bestTimeIt])
   np.save('bestTime_mat',bestTime_mat)
@@ -296,26 +201,19 @@ if __name__ == '__main__':
   plt3dX_bkX, plt3dX_it = np.meshgrid(env2.trkXSampled, np.arange(0,it+1,1))
   fig6 = plt.figure()
   ax6 = fig6.add_subplot(111, projection='3d')
-  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet)
-  
-  fig6 = plt.figure()
-  ax6 = fig6.add_subplot(111, projection='3d')
-  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet)
+  ax6.plot_surface(plt3dX_bkX, plt3dX_it, bkY_mat.T, cmap=cm.jet, label='bkY')
+  ax6.set_title('bkY')
   
   fig7 = plt.figure()
   ax7 = fig7.add_subplot(111, projection='3d')
-  ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T, cmap=cm.jet)
+  ax7.plot_surface(plt3dX_bkX, plt3dX_it, throttle_mat.T, cmap=cm.jet, label='throttle')
+  ax7.set_title('throttle')
   
   fig9 = plt.figure()
   ax9 = fig9.add_subplot(111, projection='3d')
   throttle_mat_T = throttle_mat.T.copy()
-  ax9.plot_surface(plt3dX_bkX[0:bestTimeIt+20,:], plt3dX_it[0:bestTimeIt+20,:], throttle_mat_T[0:bestTimeIt+20,:], cmap=cm.jet)
-  
-  plt3dT_theta, plt3dT_it = np.meshgrid(np.arange(0,agtSarsa.theta.size,1), np.arange(0,it+1,1))
-  
-  fig8 = plt.figure()
-  ax8 = fig8.add_subplot(111, projection='3d')
-  ax8.plot_surface(plt3dT_theta, plt3dT_it, theta_mat.T, cmap=cm.jet)
+  ax9.plot_surface(plt3dX_bkX[0:bestTimeIt+20,:], plt3dX_it[0:bestTimeIt+20,:], throttle_mat_T[0:bestTimeIt+20,:], cmap=cm.jet, label='throttle_trunk')
+  ax9.set_title('throttl_trunk')
   
   # plot positioins vs time
   #fig1, ax1 = plt.subplots()
