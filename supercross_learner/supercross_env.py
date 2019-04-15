@@ -13,8 +13,8 @@ class supercross_env:
     
     # bike
     self.bkM = (220 - self.whlM + 160) / 2.2
-    self.bkPwr = 55 / 0.75
-    self.bkTrq = 2*-self.g*self.bkM*self.whlR
+    self.bkPwr = 55 * 745.7 # 55HP->Watts
+    self.bkTrq = 4*-self.g*self.bkM*self.whlR
     self.bkCrr = 0.015
     self.bkAero = 0.5*1.2*1*0.7 # 1/2*rho*A*Cd
     
@@ -28,7 +28,7 @@ class supercross_env:
     self.sPL = self.bkM*-self.g - self.sK*self.sT*self.sSag
     
     # tire grip model - nu*Fy
-    self.nu = 0.7
+    self.nu = 2
     
     # define simulation
     self.t_end = 30
@@ -40,12 +40,12 @@ class supercross_env:
     self.trkStep = 0.05
     self.trkX = np.arange(trk[0,0],trk[0,-1],0.05)
     self.trkY = np.interp(self.trkX,trk[0,:],trk[1,:])
+    self.trkTheta = np.arctan(np.interp(self.trkX,trk[0,:],trk[2,:]))
+
     # some track data for other computation outside the env
     self.trkYmax = np.max(self.trkY)
     self.trkXSampled = self.trkX[0::10]
     self.trkYSampled = self.trkY[0::10]
-    #fig12, ax12 = plt.subplots()
-    #ax12.plot(trkX,trkY, label='trk')
   
     # defined initial conditions
     self.bkX1 = self.trkX[0]
@@ -66,8 +66,12 @@ class supercross_env:
     self.whlW = np.zeros(self.t.size)
     self.inAir = np.zeros(self.t.size)
     self.whlCntctMthd = np.zeros(self.t.size)
+    self.whlfn = np.zeros(self.t.size)
+    self.whlft = np.zeros(self.t.size)
     self.whlfY = np.zeros(self.t.size)
     self.whlfX = np.zeros(self.t.size)
+    self.bkfY = np.zeros(self.t.size)
+    self.bkfX = np.zeros(self.t.size)
     self.sTY  = np.multiply(self.sT,  np.ones(self.t.size))
     self.sFk = np.zeros(self.t.size)
     self.sFb = np.zeros(self.t.size)
@@ -75,6 +79,7 @@ class supercross_env:
     self.bkDragX = np.zeros(self.t.size)
     self.bkDragY = np.zeros(self.t.size)
     self.trkYt = np.zeros(self.t.size)
+    self.trkThetat = np.zeros(self.t.size)
     self.throttle = np.zeros(self.t.size)
     
     # time step tracker
@@ -93,7 +98,7 @@ class supercross_env:
       # step ahead in time
       
       # break if time has reached end of preallocated results vectors or out of track length
-      if (self.t[self.i] >= self.t_end) or (self.bkX[self.i] >= self.trkX[-1]):
+      if (self.t[self.i]+self.dt >= self.t_end) or (self.bkX[self.i] >= self.trkX[-1]):
         self.done = True
         self.time = self.t[self.i]
         self.reward = 10
@@ -107,19 +112,13 @@ class supercross_env:
           self.sFt[self.i]=self.whlM*self.g*0 
         else:
           self.sFk[self.i] = self.sPL + (self.sT - self.sTY[self.i])*self.sK
-          self.sFb[self.i] = (self.sTY[self.i-1] - self.sTY[self.i])/self.dt*self.sB
-          self.sFb[self.i] = min((self.sFbSat,max(self.sFb[self.i],-self.sFbSat)))
+          self.sFb[self.i] = (self.sTY[self.i-1] - self.sTY[self.i])/self.dt*self.sB # compute
+          self.sFb[self.i] = min((self.sFbSat,max(self.sFb[self.i],-self.sFbSat))) # saturate
           self.sFt[self.i]=0
       else:
         self.sFk[self.i] = self.sPL + (self.sT - self.sTY[self.i])*self.sK
         self.sFb[self.i]=0
         self.sFt[self.i]=0
-      # compute Y component drag forces
-      self.bkDragY[self.i] = self.bkAero*self.bkvY[self.i]*self.bkvY[self.i]*np.sign(self.bkvY[self.i])*-1
-      # compute bike free body in Y-direction and integrate
-      self.bkaY[self.i] = (self.bkM*self.g + self.sFk[self.i] + self.sFb[self.i] + self.sFt[self.i] + self.bkDragY[self.i]) / self.bkM
-      self.bkvY[self.i+1]  = self.bkvY[self.i]  + self.bkaY[self.i] * self.dt
-      self.bkY[self.i+1]   = self.bkY[self.i]   + self.bkvY[self.i] * self.dt
       
       # find available peak torque
       if self.whlW[self.i] > 0:
@@ -130,30 +129,53 @@ class supercross_env:
       # compute torque command
       cmdTrq = pkTrq*throttle # apply agent command
       
-      # compute bike longitudinal free body
-      if abs(self.bkvX[self.i]) > 0.01:
-        self.bkDragX[self.i] = self.bkAero*self.bkvX[self.i]*self.bkvX[self.i]*np.sign(self.bkvX[self.i])*-1 - self.bkCrr*-self.g*(self.bkM+self.whlM)
+      # compute wheel forces
+      # compute track angle at this time instant
+      self.trkThetat[self.i] = np.interp(self.bkX[self.i],self.trkX,self.trkTheta)
       if self.inAir[self.i]:
-        self.bkaX[self.i] = self.bkDragX[self.i]/(self.bkM+self.whlM)
+        self.whlfn[self.i]=0
+        self.whlft[self.i]=0
+        self.whlfX[self.i]=0
+        self.whlfY[self.i]=0 # self.whlM*self.g-; this is irrelevant since it could only be used to extend susp when in air, but susp should be extended to leave the groud
       else:
-        # compute peak longitidinal force as function of vertical force
-        self.whlfY[self.i] = np.array([ self.sFk[self.i] + self.sFb[self.i] + self.whlM*-self.g])
-        self.whlfXMax = self.whlfY[self.i]*self.nu
-        # compute applied tractive force
+        self.whlfn[self.i]=max(0, (self.whlM*self.g*-1+(self.sFk[self.i] + self.sFb[self.i]))*np.cos(self.trkThetat[self.i])) # normal force cannot have tension, therefore saturate to 0
+        self.whlftMax = self.whlfn[self.i]*self.nu
         if cmdTrq >= 0:
-          self.whlfX[self.i] = min(cmdTrq/self.whlR,  self.whlfXMax)
+          self.whlft[self.i] = min(cmdTrq/self.whlR,  self.whlftMax) + (self.whlM*self.g-(self.sFk[self.i] + self.sFb[self.i]))*np.sin(self.trkThetat[self.i])
         else:
-          self.whlfX[self.i] = max(cmdTrq/self.whlR, -self.whlfXMax)
-        # compute bike acceleration that results from longitudinal force  
-        self.bkaX[self.i] = (self.whlfX[self.i] + self.bkDragX[self.i])/(self.bkM+self.whlM)
-    
-      # integrate
+          self.whlft[self.i] = max(cmdTrq/self.whlR,  -self.whlftMax) + (self.whlM*self.g-(self.sFk[self.i] + self.sFb[self.i]))*np.sin(self.trkThetat[self.i])
+        self.whlfX[self.i] = -self.whlfn[self.i]*np.sin(self.trkThetat[self.i]) + self.whlft[self.i]*np.cos(self.trkThetat[self.i])
+        self.whlfY[self.i] = self.whlfn[self.i]*np.cos(self.trkThetat[self.i]) + self.whlft[self.i]*np.sin(self.trkThetat[self.i])
+      
+      # compute bike free body in Y-direction and integrate
+      # compute Y component drag forces
+      self.bkDragY[self.i] = self.bkAero*self.bkvY[self.i]*self.bkvY[self.i]*np.sign(self.bkvY[self.i])*-1
+      # HACK: include whlft*sin(theta) to account for vertial acceleration caused by traction on a slope, without going through wheel force balance and suspsension force balance to get the force throuogh from hweel to bike
+      self.bkfY[self.i] = (self.bkM*self.g + self.sFk[self.i] + self.sFb[self.i] + self.sFt[self.i] + self.bkDragY[self.i] + self.whlft[self.i]*np.sin(self.trkThetat[self.i]))
+      self.bkaY[self.i] = self.bkfY[self.i] / self.bkM 
+      self.bkvY[self.i+1]  = self.bkvY[self.i]  + self.bkaY[self.i] * self.dt
+      self.bkY[self.i+1]   = self.bkY[self.i]   + self.bkvY[self.i] * self.dt
+        
+      # compute bike free body in X-direction and integrate
+      # compute X component drag forces
+      if abs(self.bkvX[self.i]) > 0.01:
+        self.bkDragX[self.i] = (self.bkAero*self.bkvX[self.i]*self.bkvX[self.i] - self.bkCrr*-self.g*(self.bkM+self.whlM))*np.sign(self.bkvX[self.i])*-1
+      # compute bike acceleration that results from longitudinal force
+      if self.inAir[self.i]:
+        self.bkfX[self.i] = self.bkDragX[self.i]
+        self.bkaX[self.i] = self.bkfX[self.i]/(self.bkM+self.whlM)
+      else:
+        self.bkfX[self.i] = self.whlfX[self.i] + self.bkDragX[self.i]
+        self.bkaX[self.i] = self.bkfX[self.i]/(self.bkM+self.whlM)
+
+      # integrate acceleration for veolcity and position
       # bike longitudinal (bike X and whlX are the same)
       self.bkvX[self.i+1]  = self.bkvX[self.i]  + self.bkaX[self.i] * self.dt
       self.bkX[self.i+1]   = self.bkX[self.i]   + self.bkvX[self.i] * self.dt
+      # wheel speed
+      self.whlW[self.i+1] = np.sqrt(np.square(self.bkvX[self.i+1]) + np.square(self.bkvY[self.i+1]))/self.whlR
       
-      
-      # find track elevation at this time step and next time steo
+      # find track elevation at this time step and next time step
       self.trkYt[self.i] = np.interp(self.bkX[self.i],self.trkX,self.trkY)
       self.trkYt2 = np.interp(self.bkX[self.i+1],self.trkX,self.trkY)
       
