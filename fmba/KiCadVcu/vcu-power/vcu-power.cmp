@@ -1,0 +1,291 @@
+Cmp-Mod V01 Created by PcbNew   date = Sat Mar 30 14:28:27 2019
+
+BeginCmp
+TimeStamp = 5C9E53F2
+Path = 
+Reference = PR;
+ValeurCmp = PR;
+IdModule  = footprint:PR;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3B0F
+Path = /5C8F4786
+Reference = U1;
+ValeurCmp = pcr;
+IdModule  = footprint:PCR;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E358D
+Path = 
+Reference = h1;
+ValeurCmp = M_HOLE;
+IdModule  = footprint:M_HOLE;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3597
+Path = 
+Reference = h2;
+ValeurCmp = M_HOLE;
+IdModule  = footprint:M_HOLE;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E35A0
+Path = 
+Reference = h3;
+ValeurCmp = M_HOLE;
+IdModule  = footprint:M_HOLE;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E35A9
+Path = 
+Reference = h2;
+ValeurCmp = M_HOLE;
+IdModule  = footprint:M_HOLE;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A41
+Path = /5C8F486D
+Reference = C1;
+ValeurCmp = C;
+IdModule  = Capacitors_ThroughHole:C_Radial_D12.5_L25_P5;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A48
+Path = /5C8F43B3
+Reference = D1;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A4F
+Path = /5C8F4400
+Reference = D2;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A56
+Path = /5C908B28
+Reference = D3;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A5D
+Path = /5C8F4439
+Reference = D4;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A64
+Path = /5C8F447C
+Reference = D5;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A6B
+Path = /5C908C05
+Reference = D6;
+ValeurCmp = D;
+IdModule  = Diodes_ThroughHole:Diode_TO-220_Dual_CommonCathode_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A81
+Path = /5C90A1AD
+Reference = P1;
+ValeurCmp = CONN_01X12;
+IdModule  = footprint:connnector12-1;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A86
+Path = /5C90839D
+Reference = P2;
+ValeurCmp = Mot_Ctrl;
+IdModule  = footprint:0.210'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A8B
+Path = /5C908B3A
+Reference = P3;
+ValeurCmp = S_UP;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A90
+Path = /5C90843C
+Reference = P4;
+ValeurCmp = Mot_Rly_Ctrl;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A95
+Path = /5C90CF28
+Reference = P5;
+ValeurCmp = Bat_Neg;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A9A
+Path = /5C908669
+Reference = P6;
+ValeurCmp = S_DN;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3A9F
+Path = /5C90C4D5
+Reference = P7;
+ValeurCmp = Key_Sw;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AA4
+Path = /5C8FE801
+Reference = P8;
+ValeurCmp = Bat_Pos;
+IdModule  = footprint:0.210'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AA9
+Path = /5C908C17
+Reference = P9;
+ValeurCmp = PR_Coil;
+IdModule  = footprint:0.05'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AAE
+Path = /5C90C8A5
+Reference = P10;
+ValeurCmp = Sw_Pos;
+IdModule  = footprint:0.130'';
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AB5
+Path = /5C8F3D8E
+Reference = Q1;
+ValeurCmp = Q_PMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-247_Vertical_Neutral123_largePads;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3ABC
+Path = /5C8F3DCB
+Reference = Q2;
+ValeurCmp = Q_PMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-247_Vertical_Neutral123_largePads;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AC3
+Path = /5C8F3E09
+Reference = Q3;
+ValeurCmp = Q_PMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-247_Vertical_Neutral123_largePads;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3ACA
+Path = /5C908B22
+Reference = Q4;
+ValeurCmp = Q_NMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-220_Neutral123_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AD1
+Path = /5C8F3E3C
+Reference = Q5;
+ValeurCmp = Q_PMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-220_Neutral123_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AD8
+Path = /5C8F42B7
+Reference = Q6;
+ValeurCmp = Q_NMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-220_Neutral123_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3ADF
+Path = /5C908BFF
+Reference = Q7;
+ValeurCmp = Q_NMOS_GDS;
+IdModule  = TO_SOT_Packages_THT:TO-220_Neutral123_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AE5
+Path = /5C90D8D1
+Reference = R1;
+ValeurCmp = 22;
+IdModule  = Resistors_ThroughHole:Resistor_Horizontal_RM7mm;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AEB
+Path = /5C90AAB3
+Reference = R2;
+ValeurCmp = 22;
+IdModule  = Resistors_ThroughHole:Resistor_Horizontal_RM7mm;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AF1
+Path = /5C90B1C2
+Reference = R3;
+ValeurCmp = 22;
+IdModule  = Resistors_ThroughHole:Resistor_Horizontal_RM7mm;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AF7
+Path = /5C90AD98
+Reference = R4;
+ValeurCmp = 22;
+IdModule  = Resistors_ThroughHole:Resistor_Horizontal_RM7mm;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3AFD
+Path = /5C8F4E2F
+Reference = R5;
+ValeurCmp = R;
+IdModule  = Resistors_ThroughHole:Resistor_TO-220_Vertical;
+EndCmp
+
+BeginCmp
+TimeStamp = 5C9E3B03
+Path = /5C90AEE3
+Reference = R6;
+ValeurCmp = 22;
+IdModule  = Resistors_ThroughHole:Resistor_Horizontal_RM7mm;
+EndCmp
+
+EndListe

@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name vcu-pi-rescue)(type Legacy)(uri ${KIPRJMOD}/vcu-pi-rescue.lib)(options "")(descr ""))
+  (lib (name ncv1124)(type Legacy)(uri /home/ranju/electronics/kicad/freelancer/vcu/LIB/ncv1124.lib)(options "")(descr ""))
+  (lib (name thn_15-2411wi_)(type Legacy)(uri /home/ranju/electronics/kicad/freelancer/vcu/LIB/thn_15-2411wi_.lib)(options "")(descr ""))
+)

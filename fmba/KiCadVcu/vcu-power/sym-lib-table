@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name vcu-power-rescue)(type Legacy)(uri ${KIPRJMOD}/vcu-power-rescue.lib)(options "")(descr ""))
+  (lib (name pcr)(type Legacy)(uri /home/ranju/electronics/kicad/freelancer/vcu/LIB/pcr.lib)(options "")(descr ""))
+)
