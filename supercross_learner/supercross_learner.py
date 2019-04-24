@@ -28,85 +28,110 @@ def selectAction(offpolicyactions,it,Q,sx,sy,t,bcA_v):
 
 
 if __name__ == '__main__':
-  startTime=time.time()
-  # AGENT 001: sweep of const throttle over episode
+  
+  # setup some global stuff
+    # performance tracking
+  startTime=time.time() 
+    # control flow
+  runDropTest_flg = True
+  runSweepTest_flg = False
+    # track object
   trk = mk_trk1(units='m')
-  env  = supercross_env(trk)
   
-  score = {}
-  best_time = 1e9
-  worst_time = 0
-  breakAll = False
-  for a in np.array([0.4, 1]):
-    env.__init__(trk)
-    print(a)
-    while not env.done:
-      env.step(a,1)
-    print('done a race')
-    print(env.reward)
-    score[a] = env.reward
-    if env.time < best_time:
-      best_time = env.time
-      print('found better')
-      best_score = env.reward
-      env_best = copy.deepcopy(env)
-      best_action = a
-    if env.time > worst_time:
-      worst_time = env.time
-      print('found worse')
-      worst_score = env.reward
-      env_worst = copy.deepcopy(env)
-      worst_action = a
-  
-  print(worst_action)
-  print(best_action)
-  
-  fig2, ax2 = plt.subplots()
-  ax2.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
-#  ax2.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
-  ax2.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
-  ax2.plot(env.bkX[0:env.i],env.bkY[0:env.i], label='bk_full')
-  ax2.plot(env.bkX[0:env.i],env.inAir[0:env.i], label='inAir')
-  ax2.legend()
-  ax2.grid()
-  
-  fig12, ax12 = plt.subplots()
-  ax12.plot(env_best.trkX,env_best.trkY, label='trkY')
-  ax12.plot(env_best.trkX,env_best.trkTheta, label='trkTheta')
-  ax12.legend()
-  ax12.grid()
-  
-  fig13, ax13 = plt.subplots()
-  ax13.plot(env.bkX[0:env.i],env_best.whlfn[0:env.i], label='whlfn')
-  ax13.plot(env.bkX[0:env.i],env_best.whlft[0:env.i], label='whlft')
-  ax13.legend()
-  ax13.grid()
-  
-  fig14, ax14 = plt.subplots()
-  ax14.plot(env.bkX[0:env.i],env_best.whlfX[0:env.i], label='whlfX')
-  ax14.plot(env.bkX[0:env.i],env_best.whlfY[0:env.i], label='whlfY')
-  ax14.legend()
-  ax14.grid()
-  
-  fig15, ax15 = plt.subplots()
-  ax15.plot(env.bkX[0:env.i],env_best.bkvX[0:env.i], label='bkvX')
-  ax15.plot(env.bkX[0:env.i],env_best.bkvY[0:env.i], label='bkvY')
-  ax15.legend()
-  ax15.grid()
-  
-  fig16, ax16 = plt.subplots()
-  ax16.plot(env.bkX[0:env.i],env_best.bkfX[0:env.i], label='bkfX')
-  ax16.plot(env.bkX[0:env.i],env_best.bkfY[0:env.i], label='bkfY')
-  ax16.plot(env.bkX[0:env.i],env_best.bkDragX[0:env.i], label='bkDragX')
-  ax16.plot(env.bkX[0:env.i],env_best.bkDragY[0:env.i], label='bkDragY')
-  ax16.legend()
-  ax16.grid()
-  
-  fig17, ax17 = plt.subplots()
-  ax17.plot(env.bkX[0:env.i],env_best.bkaX[0:env.i], label='bkaX')
-  ax17.plot(env.bkX[0:env.i],env_best.bkaY[0:env.i], label='bkaY')
-  ax17.legend()
-  ax17.grid()
+  if runDropTest_flg:
+    # perform a simple drop test to check suspension behavior. e.g. comp and rebound damping, sag, settling time, etc.
+    endTimeDrop =2.0
+    envDrop = supercross_env(trk,height=1.0,endTime=endTimeDrop,sK=2e4,sB=1e2,sSag=0.2)
+    envDrop.step(0.0,int(np.floor(endTimeDrop/envDrop.dt)))
+    
+    fig302, ax302 = plt.subplots()
+#    ax302.plot(envDrop.t[0:envDrop.i],envDrop.trkY[0:envDrop.i], label='trk')
+    ax302.plot(envDrop.t[0:envDrop.i],envDrop.bkY[0:envDrop.i], label='bkY')
+    ax302.plot(envDrop.t[0:envDrop.i],envDrop.whlY[0:envDrop.i], label='whlY')
+    ax302.plot(envDrop.t[0:envDrop.i],envDrop.inAir[0:envDrop.i], label='inAir')
+    ax302.plot(envDrop.t[0:envDrop.i],envDrop.sTY[0:envDrop.i], label='sTY')
+    ax302.legend()
+    ax302.grid()
+    
+    
+  if runSweepTest_flg:
+    # AGENT 001: sweep of const throttle over episode
+    env  = supercross_env(trk)
+    
+    score = {}
+    best_time = 1e9
+    worst_time = 0
+    breakAll = False
+    for a in np.array([0.4, 1]):
+      env.__init__(trk)
+      print(a)
+      while not env.done:
+        env.step(a,1)
+      print('done a race')
+      print(env.reward)
+      score[a] = env.reward
+      if env.time < best_time:
+        best_time = env.time
+        print('found better')
+        best_score = env.reward
+        env_best = copy.deepcopy(env)
+        best_action = a
+      if env.time > worst_time:
+        worst_time = env.time
+        print('found worse')
+        worst_score = env.reward
+        env_worst = copy.deepcopy(env)
+        worst_action = a
+    
+    print(worst_action)
+    print(best_action)
+    
+    fig2, ax2 = plt.subplots()
+    ax2.plot(env_best.trkX[0:env_best.i],env_best.trkY[0:env_best.i], label='trk')
+  #  ax2.plot(env_best.bkX[0:env_best.i],env_best.bkY[0:env_best.i], label='bk_best')
+    ax2.plot(env_worst.bkX[0:env_worst.i],env_worst.bkY[0:env_worst.i], label='bk_worst')
+    ax2.plot(env.bkX[0:env.i],env.bkY[0:env.i], label='bk_full')
+    ax2.plot(env.bkX[0:env.i],env.inAir[0:env.i], label='inAir')
+    ax2.legend()
+    ax2.grid()
+    
+    fig12, ax12 = plt.subplots()
+    ax12.plot(env_best.trkX,env_best.trkY, label='trkY')
+    ax12.plot(env_best.trkX,env_best.trkTheta, label='trkTheta')
+    ax12.legend()
+    ax12.grid()
+    
+    fig13, ax13 = plt.subplots()
+    ax13.plot(env.bkX[0:env.i],env_best.whlfn[0:env.i], label='whlfn')
+    ax13.plot(env.bkX[0:env.i],env_best.whlft[0:env.i], label='whlft')
+    ax13.legend()
+    ax13.grid()
+    
+    fig14, ax14 = plt.subplots()
+    ax14.plot(env.bkX[0:env.i],env_best.whlfX[0:env.i], label='whlfX')
+    ax14.plot(env.bkX[0:env.i],env_best.whlfY[0:env.i], label='whlfY')
+    ax14.legend()
+    ax14.grid()
+    
+    fig15, ax15 = plt.subplots()
+    ax15.plot(env.bkX[0:env.i],env_best.bkvX[0:env.i], label='bkvX')
+    ax15.plot(env.bkX[0:env.i],env_best.bkvY[0:env.i], label='bkvY')
+    ax15.legend()
+    ax15.grid()
+    
+    fig16, ax16 = plt.subplots()
+    ax16.plot(env.bkX[0:env.i],env_best.bkfX[0:env.i], label='bkfX')
+    ax16.plot(env.bkX[0:env.i],env_best.bkfY[0:env.i], label='bkfY')
+    ax16.plot(env.bkX[0:env.i],env_best.bkDragX[0:env.i], label='bkDragX')
+    ax16.plot(env.bkX[0:env.i],env_best.bkDragY[0:env.i], label='bkDragY')
+    ax16.legend()
+    ax16.grid()
+    
+    fig17, ax17 = plt.subplots()
+    ax17.plot(env.bkX[0:env.i],env_best.bkaX[0:env.i], label='bkaX')
+    ax17.plot(env.bkX[0:env.i],env_best.bkaY[0:env.i], label='bkaY')
+    ax17.legend()
+    ax17.grid()
 #  
 #  # AGENT 002: q-learing using X,Y position. 
 #  # this will not be generalizable to any track, but a learning experience for me only, 
