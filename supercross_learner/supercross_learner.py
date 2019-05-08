@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
-from supercross_track_maker import mk_trk1, mk_trk2
+from supercross_track_maker import mk_trk1, mk_trk2, mk_trkAccel
 from supercross_env import supercross_env
 from supercross_utilities import max_dict, random_action, AutoDict, find_nearest
 import copy
@@ -33,15 +33,16 @@ if __name__ == '__main__':
     # performance tracking
   startTime=time.time() 
     # control flow
-  runDropTest_flg = True
+  runDropTest_flg = False
+  runAccelTest_flg = True
   runSweepTest_flg = False
     # track object
-  trk = mk_trk1(units='m')
+  trk = mk_trkAccel(units='m')
   
   if runDropTest_flg:
     # perform a simple drop test to check suspension behavior. e.g. comp and rebound damping, sag, settling time, etc.
     endTimeDrop =2.0
-    envDrop = supercross_env(trk,height=1.0,endTime=endTimeDrop,sK=2e4,sB=1e2,sSag=0.2)
+    envDrop = supercross_env(trk,height=1.0,endTime=endTimeDrop,sK=11e3,sB=2700,sSag=0.2)
     envDrop.step(0.0,int(np.floor(endTimeDrop/envDrop.dt)))
     
     fig302, ax302 = plt.subplots()
@@ -52,6 +53,26 @@ if __name__ == '__main__':
     ax302.plot(envDrop.t[0:envDrop.i],envDrop.sTY[0:envDrop.i], label='sTY')
     ax302.legend()
     ax302.grid()
+    
+  if runAccelTest_flg:
+    # compare and adjust to achieve similar results https://www.dirtrider.com/features/online-exclusives/141_0601_2006_450cc_motocross_shoutout_chart#page-4
+    endTimeAccel =12
+    envAccel = supercross_env(trk,endTime=endTimeAccel)
+    envAccel.step(1.0,int(np.floor(endTimeAccel/envAccel.dt)))
+    
+    fig303, ax303 = plt.subplots()
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.bkX[0:envAccel.i], label='bkX')
+    ax303.plot(envAccel.t[0:envAccel.i],np.multiply(envAccel.bkvX[0:envAccel.i],2.237), label='bkvX MPH')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.whlY[0:envAccel.i], label='whlY')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.inAir[0:envAccel.i], label='inAir')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
+    ax303.legend()
+    ax303.grid()
+    
+    fig304, ax304 = plt.subplots()
+    ax304.plot(envAccel.bkX[0:envAccel.i],np.multiply(envAccel.bkvX[0:envAccel.i],2.237), label='bkvX MPH')
+    ax304.legend()
+    ax304.grid()
     
     
   if runSweepTest_flg:
