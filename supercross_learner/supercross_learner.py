@@ -90,7 +90,7 @@ if __name__ == '__main__':
     trkDbl = mk_trk1(units='m')
     
     endTimeDbl = 40
-    envDblS = supercross_env(trkDbl,endTime=endTimeDbl,bkXstart=15.0)
+    envDblS = supercross_env(trkDbl,endTime=endTimeDbl,sKnonLin_flg=True)
     envDblS.step(1.0,int(np.floor(endTimeDbl/envDblS.dt)))
     
     envDblL = supercross_env(trkDbl,endTime=endTimeDbl)
@@ -103,7 +103,8 @@ if __name__ == '__main__':
     ax305.plot(envDblS.trkX[0:envDblS.i],envDblS.trkY[0:envDblS.i], label='trk')
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.whlY[0:envAccel.i], label='whlY')
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.inAir[0:envAccel.i], label='inAir')
-#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
+    ax305.plot(envDblS.bkX[0:envDblS.i],envDblS.sTY[0:envDblS.i], label='sTY envDblS')
+    ax305.plot(envDblL.bkX[0:envDblL.i],envDblL.sTY[0:envDblL.i], label='sTY envDblL')
     ax305.legend()
     ax305.grid()
     
