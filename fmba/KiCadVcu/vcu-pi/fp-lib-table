@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name footprint)(type KiCad)(uri C:/Users/albert.mathews/Documents/10-Personal/Analytics-Demo/Analytics-Demo/fmba/KiCadVcu/footprint)(options "")(descr ""))
+  (lib (name LIB)(type KiCad)(uri C:/Users/albert.mathews/Documents/10-Personal/Analytics-Demo/Analytics-Demo/fmba/KiCadVcu/LIB)(options "")(descr ""))
+  (lib (name 3D)(type KiCad)(uri C:/Users/albert.mathews/Documents/10-Personal/Analytics-Demo/Analytics-Demo/fmba/KiCadVcu/3D)(options "")(descr ""))
+)

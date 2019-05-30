@@ -1,6 +1,6 @@
 EESchema Schematic File Version 4
 LIBS:vcu-pi-cache
-EELAYER 29 0
+EELAYER 26 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
@@ -48,7 +48,7 @@ F 3 "" H 7600 450 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L ncv1124:NCV1124 U3
+L vcu-pi-rescue:NCV1124-ncv1124 U3
 U 1 1 5C87C5B2
 P 2250 5250
 F 0 "U3" H 2550 4950 60  0000 C CNN
@@ -70,7 +70,7 @@ F 3 "" H 1350 2900 50  0000 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L thn_15-2411wi_:THN_15-2411WI_ U1
+L vcu-pi-rescue:THN_15-2411WI_-thn_15-2411wi_ U1
 U 1 1 5C87C7FC
 P 1800 1600
 F 0 "U1" H 2150 1150 60  0000 C CNN
@@ -424,7 +424,7 @@ F 3 "" H 1350 5500 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L ncv1124:NCV1124 U2
+L vcu-pi-rescue:NCV1124-ncv1124 U2
 U 1 1 5C883995
 P 2200 6850
 F 0 "U2" H 2500 6550 60  0000 C CNN
