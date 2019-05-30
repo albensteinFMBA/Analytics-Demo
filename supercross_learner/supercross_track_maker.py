@@ -4,47 +4,51 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math as math
-from scipy import integrate
 
 # all dimension in meters, but input might be in feet.
 ft2m = 0.3048
 deg2rad = np.pi/180
-MINRADIUS = 1/0.3048
-DangDxMax = 5*deg2rad;
-secLen = 2*MINRADIUS*math.sin(DangDxMax)
+MINRADIUS = 2/ft2m # X meters converted to feet
+DangDxMax = 2*deg2rad # X degrees converted to radians
+secLen = 2*MINRADIUS*math.sin(DangDxMax) # feet
+secLenNotCurve_ft = 0.2 
 
+def secLen_f(minRad,DangDxMax):
+  return 2*minRad*math.sin(DangDxMax) # feet
 
 def convert_units_to_meters(pts):
   pts = np.multiply(ft2m, pts)
   return pts
 
-def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, endX_ft=-1):
+def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, endX_ft=-1, minRadFace_ft=20, minRadTop_ft=3,minRadLand_ft=10,secLenNotCurve_ft=secLenNotCurve_ft):
   # create jump, creates the 3 or 4 set of tuples for X,Y positions for a jump or table
   ptsTmp = np.zeros((2,1000))
   # face curve section is meant to cover from the first inclined section, to the inclined section which is 1*DangDxMax from face_deg
   nFaceCurveSec_raw = face_deg*deg2rad/DangDxMax
   nFaceCurveSec = math.ceil(nFaceCurveSec_raw)
+  secLenFace = secLen_f(minRadFace_ft,DangDxMax)
   for i in range(nFaceCurveSec+1): # python doesn't include the last index when indexing arrays
     n=i+1
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(n*DangDxMax)
-    ptsTmp[1,i+1] = ptsTmp[1,i] + secLen*math.sin(n*DangDxMax)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLenFace*math.cos(n*DangDxMax)
+    ptsTmp[1,i+1] = ptsTmp[1,i] + secLenFace*math.sin(n*DangDxMax)
   faceCurveEnd=i+1 # python doesn't include the last index when indexing arrays, so add one. e.g. to see elements 0,1,2, we need to query for 0:3
   faceCurveHeight = ptsTmp[1,i+1]
   
   i+=1  
   nTopCurveFirstPartSec = math.ceil(face_deg*deg2rad/DangDxMax)
+  secLenTop = secLen_f(minRadTop_ft,DangDxMax)
   topCurveHeight = 0
   for k in range(nTopCurveFirstPartSec+1):
     n=k+1
-    topCurveHeight += secLen*math.sin(n*DangDxMax)
+    topCurveHeight += secLenTop*math.sin(n*DangDxMax)
 
   remHeight = height_ft -  faceCurveHeight - topCurveHeight
   remLength = remHeight/math.sin(face_deg*deg2rad)
-  nFaceSec = math.ceil(remLength/secLen)
+  nFaceSec = math.ceil(remLength/secLenNotCurve_ft)
   for j in range(nFaceSec+1):
     i = j + faceCurveEnd-1
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(face_deg*deg2rad)
-    ptsTmp[1,i+1] = ptsTmp[1,i] + secLen*math.sin(face_deg*deg2rad)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLenNotCurve_ft*math.cos(face_deg*deg2rad)
+    ptsTmp[1,i+1] = ptsTmp[1,i] + secLenNotCurve_ft*math.sin(face_deg*deg2rad)
  
   i+=1 
   
@@ -53,33 +57,34 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
   iOffsetFlat=0
   flatCreated=0
   if flat_ft > 0:
-    nFlatSec = math.ceil(flat_ft/secLen)
+    nFlatSec = math.ceil(flat_ft/secLenNotCurve_ft)
   for j in range(nTopCurveSec+1): # python doesn't include the last index when indexing arrays,
     i = j + iOffset + iOffsetFlat
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(face_deg*deg2rad - j*DangDxMax)
-    ptsTmp[1,i+1] = ptsTmp[1,i] + secLen*math.sin(face_deg*deg2rad - j*DangDxMax)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLenTop*math.cos(face_deg*deg2rad - j*DangDxMax)
+    ptsTmp[1,i+1] = ptsTmp[1,i] + secLenTop*math.sin(face_deg*deg2rad - j*DangDxMax)
     if flat_ft > 0 and (face_deg*deg2rad - j*DangDxMax) == 0 and flatCreated == 0:
       flatCreated = 1
       for k in range(nFlatSec+1):
         i = j + iOffset + iOffsetFlat
-        ptsTmp[0,i+1] = ptsTmp[0,i] + secLen
+        ptsTmp[0,i+1] = ptsTmp[0,i] + secLenNotCurve_ft
         ptsTmp[1,i+1] = ptsTmp[1,i]
         iOffsetFlat +=1
       iOffsetFlat -=1
-  i+=1 # increment i to catch the last i+1 element written to
+  i+=1 # increment i to catch the last i+1 element written to ptsTmp
   topCurveEnd=i+1 # python doesn't include the last index when indexing arrays,
   nLandCurveSec = math.ceil(land_deg*deg2rad/DangDxMax)
+  secLenLand = secLen_f(minRadLand_ft,DangDxMax)
   LandCurveHeight = 0
   for j in range(nLandCurveSec+1):
     n=j+1
-    LandCurveHeight += secLen*math.sin(n*DangDxMax)
+    LandCurveHeight += secLenLand*math.sin(n*DangDxMax)
   remHeight = ptsTmp[1,topCurveEnd-1] - LandCurveHeight
   remLength = remHeight/math.sin(land_deg*deg2rad)
-  nLandSec = math.ceil(remLength/secLen)
+  nLandSec = math.ceil(remLength/secLenNotCurve_ft)
   for j in range(nLandSec+1):
     i = j + topCurveEnd-1
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(land_deg*deg2rad)
-    ptsTmp[1,i+1] = ptsTmp[1,i] - secLen*math.sin(land_deg*deg2rad)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLenNotCurve_ft*math.cos(land_deg*deg2rad)
+    ptsTmp[1,i+1] = ptsTmp[1,i] - secLenNotCurve_ft*math.sin(land_deg*deg2rad)
   
   i+=1
   landEnd=i+1
@@ -87,10 +92,18 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
   for j in range(nLandCurveSec+1):
     i = j + landEnd-1
     n=j+1*0
-    ptsTmp[0,i+1] = ptsTmp[0,i] + secLen*math.cos(land_deg*deg2rad - n*DangDxMax)
-    ptsTmp[1,i+1] = ptsTmp[1,i] - secLen*math.sin(land_deg*deg2rad - n*DangDxMax)
+    ptsTmp[0,i+1] = ptsTmp[0,i] + secLenLand*math.cos(land_deg*deg2rad - n*DangDxMax)
+    ptsTmp[1,i+1] = ptsTmp[1,i] - secLenLand*math.sin(land_deg*deg2rad - n*DangDxMax)
   landCurveEnd=i+1
-  ptsTmp[1,landCurveEnd-1] = 0
+  
+  # translatee the landCurve so that the last point is at y=0, and first point is one the line of landFace
+  yErr = ptsTmp[1,landCurveEnd-1]
+  xErr = yErr/math.tan(land_deg*deg2rad)
+  errStartDelta = 1
+  errEndDelta = 0
+  ptsTmp[0,landEnd-errStartDelta:landCurveEnd-errEndDelta] = np.add(ptsTmp[0,landEnd-errStartDelta:landCurveEnd-errEndDelta],xErr)
+  ptsTmp[1,landEnd-errStartDelta:landCurveEnd-errEndDelta] = np.subtract(ptsTmp[1,landEnd-errStartDelta:landCurveEnd-errEndDelta],yErr)
+#  ptsTmp[1,landCurveEnd-1] = 0
   
   pts=ptsTmp[:,0:landCurveEnd]
   
@@ -105,35 +118,35 @@ def mk_jump(face_deg, land_deg, height_ft, flat_ft=0, startX_ft=-1, ctrX_ft=-1, 
 
 def mk_flat(startX_ft=0,endX_ft=100,len_ft=-1):
   if len_ft > -1:
-    ptsX = np.arange(startX_ft,(startX_ft+len_ft),secLen)
+    ptsX = np.arange(startX_ft,(startX_ft+len_ft),secLenNotCurve_ft)
   else:
-    ptsX = np.arange(startX_ft,endX_ft,secLen)
+    ptsX = np.arange(startX_ft,endX_ft,secLenNotCurve_ft)
   pts = np.zeros((2,ptsX.size))
   pts[0,:] = ptsX
   return pts
 
 def mk_trpl(startX_ft=0,gap_ft=60):
   #  create a triple jump, with start, and gap specified
-  pts1 = mk_jump(30, 30, 6)
+  pts1 = mk_jump(30, 30, 6, minRadFace_ft=16, minRadTop_ft=2,minRadLand_ft=10)
   pts1[0,:] += startX_ft
   jump1PkX = np.mean(pts1[0,:])
-  pts3 = mk_jump(30, 10, 3, ctrX_ft=(jump1PkX+gap_ft)) 
-  pts2 = mk_jump(30, 20, 4.5, ctrX_ft=(pts1[0,-1]+(pts3[0,0]-pts1[0,-1])/2))
-  ptsFlat1 = mk_flat(pts1[0,-1]+secLen,pts2[0,0])
-  ptsFlat2 = mk_flat(pts2[0,-1]+secLen,pts3[0,0])
+  pts3 = mk_jump(30, 10, 3, ctrX_ft=(jump1PkX+gap_ft),minRadFace_ft=6, minRadTop_ft=3,minRadLand_ft=10)
+  pts2 = mk_jump(30, 20, 4.5, ctrX_ft=(pts1[0,-1]+(pts3[0,0]-pts1[0,-1])/2),minRadFace_ft=6, minRadTop_ft=3,minRadLand_ft=10)
+  ptsFlat1 = mk_flat(pts1[0,-1]+secLenNotCurve_ft,pts2[0,0])
+  ptsFlat2 = mk_flat(pts2[0,-1]+secLenNotCurve_ft,pts3[0,0])
   pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
   
   return pts
 
-def mk_onoff(startX_ft=0,gap_ft=10):
+def mk_onoff(startX_ft=0,gap1_ft=6,gap2_ft=1):
 #  startX_ft=0
 #  gap_ft = 10
-  pts1 = mk_jump(30,30,3)
+  pts1 = mk_jump(20,30,4.5, minRadFace_ft=20, minRadTop_ft=1.5,minRadLand_ft=10)
   pts1[0,:] += startX_ft
-  pts2 = mk_jump(20,20,4,flat_ft=15)
-  pts2[0,:] = pts2[0,:] + pts1[0,-1] + gap_ft
-  pts3 = mk_jump(30,20,3)
-  pts3[0,:] = pts3[0,:] + pts2[0,-1] + gap_ft
+  pts2 = mk_jump(20,20,5,flat_ft=20, minRadFace_ft=10, minRadTop_ft=3,minRadLand_ft=15)
+  pts2[0,:] = pts2[0,:] + pts1[0,-1] + gap1_ft
+  pts3 = mk_jump(30,10,3, minRadFace_ft=5, minRadTop_ft=4,minRadLand_ft=15)
+  pts3[0,:] = pts3[0,:] + pts2[0,-1] + gap2_ft
   ptsFlat1 = mk_flat(pts1[0,-1]+secLen,pts2[0,0])
   ptsFlat2 = mk_flat(pts2[0,-1]+secLen,pts3[0,0])
   pts = np.concatenate((pts1, ptsFlat1, pts2, ptsFlat2, pts3), axis=1)
@@ -147,7 +160,7 @@ def addTrkGrad(pts):
   
 
 def mk_trk1(units='ft'): #just a triple jump
-  pts1 = mk_flat(endX_ft=60)
+  pts1 = mk_flat(endX_ft=120)
   pts2 = mk_trpl(startX_ft=(pts1[0,-1]+secLen))
   pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=30)
   
@@ -190,18 +203,19 @@ if __name__ == '__main__':
   ang=30
   face_deg = 30
   land_deg = 10
-  height_ft = 3
+  height_ft = 10
   flat_ft = 0
   ctrX_ft = -1
   startX_ft = -1
   endX_ft = -1
   
-
+#  pts = mk_jump(30, 30, 6, minRadFace_ft=15, minRadTop_ft=3,minRadLand_ft=10)
 #  pts = mk_jump(face_deg, land_deg, height_ft)
 #  pts = mk_trpl()
 #  pts = mk_onoff()
-  pts = mk_trk1()
-  pts_m = mk_trk2(units='m')
+#  pts = mk_trk1()
+  pts = mk_trk2()
+#  pts = mk_trk1(units='m')
   
   
   
@@ -214,7 +228,7 @@ if __name__ == '__main__':
 #  ax5.plot(pts[0,topCurveEnd:landEnd],pts[1,topCurveEnd:landEnd],'co', label='land')
 #  ax5.plot(pts[0,landEnd:landCurveEnd],pts[1,landEnd:landCurveEnd],'go', label='landCurve')
   ax5.plot(pts[0,:],pts[1,:],label='ft')
-  ax5.plot(pts[0,:],pts[2,:],label='grd')
+#  ax5.plot(pts[0,:],pts[2,:],label='grd')
 #  ax5.plot(pts_m[0,:],pts_m[1,:],'k+',label='m')
   ax5.grid()
   ax5.legend()

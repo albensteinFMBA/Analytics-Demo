@@ -34,7 +34,8 @@ if __name__ == '__main__':
   startTime=time.time() 
     # control flow
   runDropTest_flg = False
-  runAccelTest_flg = True
+  runAccelTest_flg = False
+  runDblTest_flg = True
   runSweepTest_flg = False
     # track object
   trk = mk_trkAccel(units='m')
@@ -60,20 +61,68 @@ if __name__ == '__main__':
     envAccel = supercross_env(trk,endTime=endTimeAccel)
     envAccel.step(1.0,int(np.floor(endTimeAccel/envAccel.dt)))
     
+    timeS = np.array([0, 2, 4, 6, 11])
+    timeMPH = np.array([0, 32, 54, 68, 82])
+    timeMPS = np.multiply(timeMPH,0.447)
+    
     fig303, ax303 = plt.subplots()
-#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.bkX[0:envAccel.i], label='bkX')
-    ax303.plot(envAccel.t[0:envAccel.i],np.multiply(envAccel.bkvX[0:envAccel.i],2.237), label='bkvX MPH')
+    ax303.plot(timeS,timeMPS, label='ref')
+    ax303.plot(envAccel.t[0:envAccel.i],envAccel.bkvX[0:envAccel.i], label='bkvX')
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.whlY[0:envAccel.i], label='whlY')
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.inAir[0:envAccel.i], label='inAir')
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
     ax303.legend()
     ax303.grid()
     
+    distFt = np.array([0, 50, 100, 200, 350])
+    distMPH = np.array([0, 32, 44, 56, 67])
+    
+    distM = np.multiply(distFt,0.3048)
+    distMPS = np.multiply(distMPH,0.447)
+    
     fig304, ax304 = plt.subplots()
-    ax304.plot(envAccel.bkX[0:envAccel.i],np.multiply(envAccel.bkvX[0:envAccel.i],2.237), label='bkvX MPH')
+    ax304.plot(distM,distMPS, label='ref')
+    ax304.plot(envAccel.bkX[0:envAccel.i],envAccel.bkvX[0:envAccel.i], label='bkvX')
     ax304.legend()
     ax304.grid()
     
+  if runDblTest_flg:
+    trkDbl = mk_trk1(units='m')
+    
+    endTimeDbl = 40
+    envDblS = supercross_env(trkDbl,endTime=endTimeDbl,bkXstart=15.0)
+    envDblS.step(1.0,int(np.floor(endTimeDbl/envDblS.dt)))
+    
+    envDblL = supercross_env(trkDbl,endTime=endTimeDbl)
+    envDblL.step(1.0,int(np.floor(endTimeDbl/envDblL.dt)))
+    
+    fig305, ax305 = plt.subplots()
+    
+    ax305.plot(envDblS.bkX[0:envDblS.i],envDblS.bkY[0:envDblS.i], label='bk_short_run_in')
+    ax305.plot(envDblL.bkX[0:envDblL.i],envDblL.bkY[0:envDblL.i], label='bk_long_run_in')
+    ax305.plot(envDblS.trkX[0:envDblS.i],envDblS.trkY[0:envDblS.i], label='trk')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.whlY[0:envAccel.i], label='whlY')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.inAir[0:envAccel.i], label='inAir')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
+    ax305.legend()
+    ax305.grid()
+    
+    bkVS = np.sqrt(np.add(np.multiply(envDblS.bkvX,envDblS.bkvX),np.multiply(envDblS.bkvY,envDblS.bkvY)))
+    bkVL = np.sqrt(np.add(np.multiply(envDblL.bkvX,envDblL.bkvX),np.multiply(envDblL.bkvY,envDblL.bkvY)))
+    
+    fig306, ax306 = plt.subplots()
+#    ax306.plot(envDblS.t[0:envDblS.i],bkVS[0:envDblS.i], label='bkVS')
+#    ax306.plot(envDblL.t[0:envDblL.i],bkVS[0:envDblL.i], label='bkVL')
+    
+    ax306.plot(envDblS.bkX[0:envDblS.i],bkVS[0:envDblS.i], label='bkVS')
+    ax306.plot(envDblL.bkX[0:envDblL.i],bkVL[0:envDblL.i], label='bkVL')
+    
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.whlY[0:envAccel.i], label='whlY')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.inAir[0:envAccel.i], label='inAir')
+#    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
+    ax306.legend()
+    ax306.grid()
+       
     
   if runSweepTest_flg:
     # AGENT 001: sweep of const throttle over episode

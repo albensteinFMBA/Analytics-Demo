@@ -3,7 +3,7 @@ import numpy as np
 
 class supercross_env: 
   # Define constants for environment model
-  def __init__(self,trk,height=0.0,endTime=30,sK=11e3,sB=2700,sSag=0.3):
+  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0):
     self.g = -9.81
   
     # wheel
@@ -13,8 +13,8 @@ class supercross_env:
     
     # bike
     self.bkM = (220 - self.whlM + 160) / 2.2
-    self.bkPwr = 55 * 745.7 # 55HP->Watts
-    self.bkTrq = 2*-self.g*self.bkM*self.whlR
+    self.bkPwr = 35 * 745.7 # 55HP->Watts
+    self.bkTrq = 0.8*-self.g*self.bkM*self.whlR
     self.bkCrr = 0.015
     self.bkAero = 0.5*1.2*1*0.7 # 1/2*rho*A*Cd
     
@@ -47,7 +47,7 @@ class supercross_env:
     self.trkYSampled = self.trkY[0::10]
   
     # defined initial conditions
-    self.bkX1 = self.trkX[0]
+    self.bkX1 = self.trkX[0] + bkXstart
     self.whlY1 = self.trkY[0]+self.whlR + height # "+ height" allows user to lift the bike off the ground for a drop test
     if height == 0:
       self.bkY1 = self.whlY1 + self.sT*(1-self.sSag) 
