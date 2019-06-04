@@ -14,7 +14,8 @@ class supercross_env:
     self.stateTrkVisonDist = stateTrkVisonDist #how far in disatnce the agent sees ahead
     self.stateTrkNumel = np.floor(self.stateTrkVisonDist/self.stateTrkResolution)
     self.stateShape = self.stateTrkNumel + 3
-    
+    self._states = dict(shape=(self.stateShape,), type='float')
+    self._actions = dict(type='float', shape=(), min_value=-1, max_value=1)
     
     # wheel
     self.whlR = (19/2+2)*0.0254 # ~0.3meters
@@ -59,18 +60,104 @@ class supercross_env:
     self.trkYmax = np.max(self.trkY)
     self.trkXSampled = self.trkX[0::10]
     self.trkYSampled = self.trkY[0::10]
-  
+    
+    self.heightInit = height
+    self.bkXstart = bkXstart
+    
+    supercross_env.reset(self)
+    
     # defined initial conditions
-    self.bkX1 = self.trkX[0] + bkXstart
-    self.whlY1 = self.trkY[0]+self.whlR + height # "+ height" allows user to lift the bike off the ground for a drop test
-    if height == 0:
+#    self.bkX1 = self.trkX[0] + bkXstart
+#    
+#    self.whlY1 = self.trkY[0]+self.whlR + self.heightInit # "+ height" allows user to lift the bike off the ground for a drop test
+#    if self.heightInit == 0:
+#      self.bkY1 = self.whlY1 + self.sT*(1-self.sSag) 
+#    else:
+#      # "+ height" allows user to lift the bike off the ground for a drop test
+#      # no inital sag for drop test
+#      self.bkY1 = self.whlY1 + self.sT + self.heightInit       
+#    
+#    # pre-allocate results data vectors
+#    self.whlY = np.multiply(self.whlY1, np.ones(self.t.size))
+#    self.whlvY= np.zeros(self.t.size)
+#    self.whlaY= np.zeros(self.t.size)
+#    self.bkX  = np.multiply(self.bkX1,  np.ones(self.t.size))
+#    self.bkY =  np.multiply(self.bkY1,  np.ones(self.t.size))
+#    self.bkvX = np.zeros(self.t.size)
+#    self.bkvY = np.zeros(self.t.size)
+#    self.bkv = np.zeros(self.t.size)
+#    self.bkaX = np.zeros(self.t.size)
+#    self.bkaY = np.zeros(self.t.size)
+#    self.whlAlpha = np.zeros(self.t.size)
+#    self.whlW = np.zeros(self.t.size)
+#    self.inAir = np.zeros(self.t.size)
+#    self.whlCntctMthd = np.zeros(self.t.size)
+#    self.whlfn = np.zeros(self.t.size)
+#    self.whlft = np.zeros(self.t.size)
+#    self.whlfY = np.zeros(self.t.size)
+#    self.whlfX = np.zeros(self.t.size)
+#    self.bkfY = np.zeros(self.t.size)
+#    self.bkfX = np.zeros(self.t.size)
+#    self.sTY  = np.multiply(self.sT,  np.ones(self.t.size))
+#    self.sFk = np.zeros(self.t.size)
+#    self.sFb = np.zeros(self.t.size)
+#    self.sFt = np.zeros(self.t.size)
+#    self.bkDragX = np.zeros(self.t.size)
+#    self.bkDragY = np.zeros(self.t.size)
+#    self.trkYt = np.zeros(self.t.size)
+#    self.trkThetat = np.zeros(self.t.size)
+#    self.throttle = np.zeros(self.t.size)
+#    
+#    # time step tracker
+#    self.i = 0
+#    
+#    # episode tracker
+#    self.done = False
+#    self.time = 0
+#    self.reward = 0
+  
+  # Define tensorForce API functions
+  @property
+  def actions(self):
+    # np.arange(-1,1,0.1)
+    return self._actions
+  
+  def close(self):
+    self.done = True
+    return
+  
+  def execute(self,a):
+    self.step(self,a,100) # 100 physics time steps between each agent time step.
+    # 1] find trkX index that is stateTrkVisonDist meters ahead
+    idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
+    idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDis*1.05))).argmin()
+    # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
+    # 3] resample to X direction resolution of stateTrkResolution meters
+    trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
+    trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
+    # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
+    trkY_samples = trkY_samples[0:self.stateTrkNumel]
+    # 5] get all other state variables
+    whlElev = (self.whlY[self.i] - self.whlR) - trkY_samples[0]
+    bkSpd = self.bkV[self.i]
+    sT = self.sTY[self.i]
+    # 6] concatenate into a single state vector
+    next_state = np.concatenate((trkY_samples, whlElev, bkSpd, sT), axis=0)
+    return  next_state, self.done, self.reward
+  
+  def reset(self):
+    # defined initial conditions
+    self.bkX1 = self.trkX[0] + self.bkXstart
+    
+    self.whlY1 = self.trkY[0]+self.whlR + self.heightInit # "+ height" allows user to lift the bike off the ground for a drop test
+    if self.heightInit == 0:
       self.bkY1 = self.whlY1 + self.sT*(1-self.sSag) 
     else:
       # "+ height" allows user to lift the bike off the ground for a drop test
       # no inital sag for drop test
-      self.bkY1 = self.whlY1 + self.sT + height       
+      self.bkY1 = self.whlY1 + self.sT + self.heightInit       
     
-    # pre-allocate results data vectors
+    # reset pre-allocated results data vectors
     self.whlY = np.multiply(self.whlY1, np.ones(self.t.size))
     self.whlvY= np.zeros(self.t.size)
     self.whlaY= np.zeros(self.t.size)
@@ -108,48 +195,16 @@ class supercross_env:
     self.done = False
     self.time = 0
     self.reward = 0
-  
-  # Define tensorForce API functions
-  def actions():
-    # np.arange(-1,1,0.1)
-    a = dict(type='float', shape=(), min_value=-1, max_value=1)
-    return a
-  
-  def close(self):
-    self.done = True
     return
   
-  def execute(self,a):
-    self.step(self,a,100) # 100 physics time steps between each agent time step.
-    # 1] find trkX index that is stateTrkVisonDist meters ahead
-    idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
-    idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDis*1.05))).argmin()
-    # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
-    # 3] resample to X direction resolution of stateTrkResolution meters
-    trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
-    trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
-    # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
-    trkY_samples = trkY_samples[0:self.stateTrkNumel]
-    # 5] get all other state variables
-    whlElev = (self.whlY[self.i] - self.whlR) - trkY_samples[0]
-    bkSpd = self.bkV[self.i]
-    sT = self.sTY[self.i]
-    # 6] concatenate into a single state vector
-    next_state = np.concatenate((trkY_samples, whlElev, bkSpd, sT), axis=0)
-    return  next_state, self.done, self.reward
-  
-  def reset(self):
-    self.__init__(self,self.trk)
-    return
-    
+  @property
   def states(self):
     # state is vector concatenated of vectors and scalars
     #   [sampled track elevation points for some distance ahead, e.g. 30 meter ahead, sampled every 1 meter ...
     #   distance between wheel and track surface ...
     #   bike speed ...
     #   suspension travel]
-    s = dict(shape=(self.stateShape), type='float')
-    return s
+    return self._states #dict(shape=(), type='int') #dict(shape=(self.stateShape,), type='float')
   
   # define physics (i.e. rules) of the environment, and how the agents actions impact the environment
   def step(self,throttle,n):
