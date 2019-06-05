@@ -65,57 +65,25 @@ class supercross_env:
     self.bkXstart = bkXstart
     
     supercross_env.reset(self)
-    
-    # defined initial conditions
-#    self.bkX1 = self.trkX[0] + bkXstart
-#    
-#    self.whlY1 = self.trkY[0]+self.whlR + self.heightInit # "+ height" allows user to lift the bike off the ground for a drop test
-#    if self.heightInit == 0:
-#      self.bkY1 = self.whlY1 + self.sT*(1-self.sSag) 
-#    else:
-#      # "+ height" allows user to lift the bike off the ground for a drop test
-#      # no inital sag for drop test
-#      self.bkY1 = self.whlY1 + self.sT + self.heightInit       
-#    
-#    # pre-allocate results data vectors
-#    self.whlY = np.multiply(self.whlY1, np.ones(self.t.size))
-#    self.whlvY= np.zeros(self.t.size)
-#    self.whlaY= np.zeros(self.t.size)
-#    self.bkX  = np.multiply(self.bkX1,  np.ones(self.t.size))
-#    self.bkY =  np.multiply(self.bkY1,  np.ones(self.t.size))
-#    self.bkvX = np.zeros(self.t.size)
-#    self.bkvY = np.zeros(self.t.size)
-#    self.bkv = np.zeros(self.t.size)
-#    self.bkaX = np.zeros(self.t.size)
-#    self.bkaY = np.zeros(self.t.size)
-#    self.whlAlpha = np.zeros(self.t.size)
-#    self.whlW = np.zeros(self.t.size)
-#    self.inAir = np.zeros(self.t.size)
-#    self.whlCntctMthd = np.zeros(self.t.size)
-#    self.whlfn = np.zeros(self.t.size)
-#    self.whlft = np.zeros(self.t.size)
-#    self.whlfY = np.zeros(self.t.size)
-#    self.whlfX = np.zeros(self.t.size)
-#    self.bkfY = np.zeros(self.t.size)
-#    self.bkfX = np.zeros(self.t.size)
-#    self.sTY  = np.multiply(self.sT,  np.ones(self.t.size))
-#    self.sFk = np.zeros(self.t.size)
-#    self.sFb = np.zeros(self.t.size)
-#    self.sFt = np.zeros(self.t.size)
-#    self.bkDragX = np.zeros(self.t.size)
-#    self.bkDragY = np.zeros(self.t.size)
-#    self.trkYt = np.zeros(self.t.size)
-#    self.trkThetat = np.zeros(self.t.size)
-#    self.throttle = np.zeros(self.t.size)
-#    
-#    # time step tracker
-#    self.i = 0
-#    
-#    # episode tracker
-#    self.done = False
-#    self.time = 0
-#    self.reward = 0
   
+  # Define function to creation state, since multiple tensorForce API functions need the method
+  def mk_state(self):
+    # 1] find trkX index that is stateTrkVisonDist meters ahead
+    idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
+    idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDist*1.05))).argmin()
+    # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
+    # 3] resample to X direction resolution of stateTrkResolution meters
+    trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
+    trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
+    # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
+    trkY_samples = trkY_samples[0:int(self.stateTrkNumel)]
+    # 5] get all other state variables
+    whlElev = (self.whlY[self.i] - self.whlR) - trkY_samples[0]
+    bkSpd = self.bkv[self.i]
+    sT = self.sTY[self.i]
+    # 6] concatenate into a single state vector
+    state = np.append(trkY_samples, [whlElev, bkSpd, sT])
+    return state
   # Define tensorForce API functions
   @property
   def actions(self):
@@ -126,23 +94,9 @@ class supercross_env:
     self.done = True
     return
   
-  def execute(self,a):
-    self.step(self,a,100) # 100 physics time steps between each agent time step.
-    # 1] find trkX index that is stateTrkVisonDist meters ahead
-    idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
-    idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDis*1.05))).argmin()
-    # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
-    # 3] resample to X direction resolution of stateTrkResolution meters
-    trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
-    trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
-    # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
-    trkY_samples = trkY_samples[0:self.stateTrkNumel]
-    # 5] get all other state variables
-    whlElev = (self.whlY[self.i] - self.whlR) - trkY_samples[0]
-    bkSpd = self.bkV[self.i]
-    sT = self.sTY[self.i]
-    # 6] concatenate into a single state vector
-    next_state = np.concatenate((trkY_samples, whlElev, bkSpd, sT), axis=0)
+  def execute(self,action):
+    self.step(action,100) # 100 physics time steps between each agent time step.
+    next_state = self.mk_state()
     return  next_state, self.done, self.reward
   
   def reset(self):
@@ -195,7 +149,9 @@ class supercross_env:
     self.done = False
     self.time = 0
     self.reward = 0
-    return
+    
+    state = self.mk_state()
+    return state
   
   @property
   def states(self):
