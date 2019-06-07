@@ -9,7 +9,7 @@ from tensorforce.contrib.openai_gym import OpenAIGym
 
 if True:
   # Create an OpenAIgym environment
-  env = OpenAIGym('CartPole-v0', visualize=True)
+  env = OpenAIGym('CartPole-v0', visualize=False)
   a=env.actions
   s=env.states
   states_reset = env.reset()

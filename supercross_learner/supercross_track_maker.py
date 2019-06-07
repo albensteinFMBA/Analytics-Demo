@@ -189,8 +189,8 @@ def mk_trk2(units='ft'): #in run, triple, onoff, triple
   
   return pts
 
-def mk_trkAccel(units='ft'):
-  pts = mk_flat(startX_ft=0,endX_ft=2000,len_ft=-1)
+def mk_trkAccel(units='ft',endX_ft=2000):
+  pts = mk_flat(startX_ft=0,endX_ft=endX_ft,len_ft=-1)
   
   if units == 'm':
     pts = convert_units_to_meters(pts)

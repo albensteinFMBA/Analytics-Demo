@@ -1,9 +1,18 @@
 # imports
 import numpy as np
+from supercross_utilities import draw_race
 
 class supercross_env: 
   # Define constants for environment model
-  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=30):
+  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=30,drawRace_flg=False,draw_race_frequency=500):
+    
+    #UI controls
+    self.drawRace_flg = drawRace_flg
+    self.episode_cnt = 0 # a counter tracking the number of episodes completed for training, used to draw_race every once in a while
+    self.draw_race_frequency = draw_race_frequency
+    
+    
+    # constants
     self.g = -9.81
     
     # track
@@ -68,13 +77,24 @@ class supercross_env:
   
   # Define function to creation state, since multiple tensorForce API functions need the method
   def mk_state(self):
-    # 1] find trkX index that is stateTrkVisonDist meters ahead
-    idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
-    idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDist*1.05))).argmin()
-    # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
-    # 3] resample to X direction resolution of stateTrkResolution meters
-    trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
-    trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
+    # 1] calc remaining track distance
+    remDist = self.trkX[-1] - self.bkX[self.i]
+    if remDist < 1:
+      trkY_samples = np.zeros(int(self.stateTrkNumel))
+    else:
+      # find trkX index that is stateTrkVisonDist meters ahead
+      idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
+      if remDist < self.stateTrkVisonDist:
+        idx2 = -1 # pick the end
+        trkX_samples = np.arange(self.bkX[self.i],self.trkX[-1],self.stateTrkResolution)
+      else:
+        idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDist*1.05))).argmin()
+        # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
+        # 3] resample to X direction resolution of stateTrkResolution meters
+        trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
+      trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
+    if trkY_samples.size < 30:
+      trkY_samples = np.append(trkY_samples, np.zeros(30))
     # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
     trkY_samples = trkY_samples[0:int(self.stateTrkNumel)]
     # 5] get all other state variables
@@ -100,6 +120,12 @@ class supercross_env:
     return  next_state, self.done, self.reward
   
   def reset(self):
+    # increment episode counter
+    self.episode_cnt += 1
+    #check if it's time to draw the race
+    if np.mod(self.episode_cnt,self.draw_race_frequency) == 0:
+      draw_race(self)    
+    
     # defined initial conditions
     self.bkX1 = self.trkX[0] + self.bkXstart
     
@@ -125,7 +151,6 @@ class supercross_env:
     self.whlAlpha = np.zeros(self.t.size)
     self.whlW = np.zeros(self.t.size)
     self.inAir = np.zeros(self.t.size)
-    self.whlCntctMthd = np.zeros(self.t.size)
     self.whlfn = np.zeros(self.t.size)
     self.whlft = np.zeros(self.t.size)
     self.whlfY = np.zeros(self.t.size)
@@ -174,6 +199,8 @@ class supercross_env:
         self.done = True
         self.time = self.t[self.i]
         self.reward = 10
+        if self.drawRace_flg:
+          draw_race(self)
         return
       
       # compute suspension forces. convention, extension=+ve, tension=-ve
@@ -208,7 +235,7 @@ class supercross_env:
     
       # compute torque command
       if (throttle < 0) and (self.bkv[self.i] < self.brkSpdThr):
-        cmdTrq = pkTrq*throttle*(self.brkSpdThr - self.bkv[self.i])/self.brkSpdThr # apply agent command for braking when speed is below ramp down threshold
+        cmdTrq = pkTrq*throttle*(1-(self.brkSpdThr - self.bkv[self.i])/self.brkSpdThr) # apply agent command for braking when speed is below ramp down threshold
       else:
         cmdTrq = pkTrq*throttle # apply agent command for accelerating in forward direction
       
@@ -255,6 +282,23 @@ class supercross_env:
       # bike longitudinal (bike X and whlX are the same)
       self.bkvX[self.i+1]  = self.bkvX[self.i]  + self.bkaX[self.i] * self.dt
       self.bkX[self.i+1]   = self.bkX[self.i]   + self.bkvX[self.i] * self.dt
+      
+      # if the bike has gone backwards off the start end of the track, take some actions
+      if self.bkX[self.i+1] < self.trkX[0]:
+        
+        if self.bkvX[self.i+1] < -0.5:
+          # if the bike was going fast, end episode and penalize
+          self.done = True
+          self.time = self.t[self.i]
+          self.reward = -1e6
+          if self.drawRace_flg:
+            draw_race(self)
+          return
+        else:
+          #if the bike was going very slow, its because the first throttle cmd was negative, reset to begining
+          self.bkvX[self.i+1]  = 0
+          self.bkX[self.i+1]   = 0
+      
       
       # bike speed
       self.bkv[self.i+1] = np.sqrt(np.square(self.bkvX[self.i+1]) + np.square(self.bkvY[self.i+1]))

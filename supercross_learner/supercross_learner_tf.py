@@ -39,13 +39,12 @@ if __name__ == '__main__':
   runDropTest_flg = False
   runAccelTest_flg = False
   runDblTest_flg = False
-  runSweepTest_flg = False
-    # track object
-  trk = mk_trkAccel(units='m')
+  runStartStopTest_flg = False
+  runSweepTest_flg = False  
   
   if runTfAgent_flg:
-    trk = mk_trk2(units='m')
-    env = supercross_env(trk)
+    trk = mk_trk1(units='m') #mk_trkAccel(units='m',endX_ft=100)
+    env = supercross_env(trk,drawRace_flg=False)
     
     # Network as list of layers
 #    network_spec = [
@@ -138,7 +137,7 @@ if __name__ == '__main__':
     
     
     # Start learning
-    runner.run(episodes=10, max_episode_timesteps=200, episode_finished=episode_finished)
+    runner.run(episodes=3000, max_episode_timesteps=400, episode_finished=episode_finished)
     runner.close()
     
     # Print statistics
@@ -151,6 +150,7 @@ if __name__ == '__main__':
     print("cummulative execution time:", exeTime)
     
   if runDropTest_flg:
+    trk = mk_trkAccel(units='m')
     # perform a simple drop test to check suspension behavior. e.g. comp and rebound damping, sag, settling time, etc.
     endTimeDrop =2.0
     envDrop = supercross_env(trk,height=1.0,endTime=endTimeDrop,sK=11e3,sB=2700,sSag=0.2)
@@ -166,6 +166,7 @@ if __name__ == '__main__':
     ax302.grid()
     
   if runAccelTest_flg:
+    trk = mk_trkAccel(units='m')
     # compare and adjust to achieve similar results https://www.dirtrider.com/features/online-exclusives/141_0601_2006_450cc_motocross_shoutout_chart#page-4
     endTimeAccel =12
     envAccel = supercross_env(trk,endTime=endTimeAccel)
@@ -233,7 +234,27 @@ if __name__ == '__main__':
 #    ax303.plot(envAccel.t[0:envAccel.i],envAccel.sTY[0:envAccel.i], label='sTY')
     ax306.legend()
     ax306.grid()
-       
+    
+  if runStartStopTest_flg:
+    trk = mk_trkAccel(units='m')
+    
+    envSS = supercross_env(trk,endTime=30)
+    envSS.step(1.0,int(np.floor(3/envSS.dt)))
+    envSS.step(0,int(np.floor(10/envSS.dt)))
+    envSS.step(-1.0,int(np.floor((30-10-3)/envSS.dt)))
+    
+    
+    fig305, ax305 = plt.subplots()
+    ax305.plot(envSS.t[0:envSS.i],envSS.bkv[0:envSS.i], label='bkv')
+    ax305.plot(envSS.t[0:envSS.i],envSS.throttle[0:envSS.i], label='throttle')
+    ax305.legend()
+    ax305.grid()
+    
+    fig306, ax306 = plt.subplots()
+    ax306.plot(envSS.bkX[0:envSS.i],envSS.bkY[0:envSS.i], label='bk')
+    ax306.plot(envSS.trkX[0:envSS.i],envSS.trkY[0:envSS.i], label='trk')
+    ax306.legend()
+    ax306.grid()
     
   if runSweepTest_flg:
     # AGENT 001: sweep of const throttle over episode
