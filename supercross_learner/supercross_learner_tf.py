@@ -69,11 +69,20 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
-    
+    saver_spec = {'directory':'C:\saveTensorForceMoldes'}#,'file':'supercrossTensorForce001'}
+#   saver (spec): Saver specification, with the following attributes (default: none):
+#                - directory: model directory.
+#                - file: model filename (optional).
+#                - seconds or steps: save frequency (default: 600 seconds).
+#                - load: specifies whether model is loaded, if existent (default: true).
+#                - basename: optional file basename (default: 'model.ckpt').
+
+        
     agent = PPOAgent(
         states=env.states,
         actions=env.actions,
         network=network_spec,
+        saver=saver_spec,
         # Agent
         states_preprocessing=None,
         actions_exploration=None,
@@ -129,25 +138,26 @@ if __name__ == '__main__':
     runner = Runner(agent=agent, environment=env)
     
     
+    
     # Callback function printing episode statistics
-    def episode_finished(r):
-        print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
-                                                                                     reward=r.episode_rewards[-1]))
-        return True
-    
-    
-    # Start learning
-    runner.run(episodes=3000, max_episode_timesteps=400, episode_finished=episode_finished)
-    runner.close()
-    
-    # Print statistics
-    print("Learning finished. Total episodes: {ep}. Average reward of last 10 episodes: {ar}.".format(
-        ep=runner.episode,
-        ar=np.mean(runner.episode_rewards[-10:]))
-    )
-        
-    exeTime = (time.time() - startTime)
-    print("cummulative execution time:", exeTime)
+#    def episode_finished(r):
+#        print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
+#                                                                                     reward=r.episode_rewards[-1]))
+#        return True
+#    
+#    
+#    # Start learning
+#    runner.run(episodes=3, max_episode_timesteps=40, episode_finished=episode_finished)
+#    runner.close()
+#    
+#    # Print statistics
+#    print("Learning finished. Total episodes: {ep}. Average reward of last 10 episodes: {ar}.".format(
+#        ep=runner.episode,
+#        ar=np.mean(runner.episode_rewards[-10:]))
+#    )
+#        
+#    exeTime = (time.time() - startTime)
+#    print("cummulative execution time:", exeTime)
     
   if runDropTest_flg:
     trk = mk_trkAccel(units='m')
