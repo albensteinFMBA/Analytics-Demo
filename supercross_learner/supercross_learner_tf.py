@@ -69,7 +69,7 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
-    saver_spec = {'directory':'C:\saveTensorForceMoldes','seconds':5} #,'file':'supercrossTensorForce001'}
+    saver_spec = {'directory':'C:\saveTensorForceMoldes','steps':30} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
 #                - directory: model directory.
 #                - file: model filename (optional).
