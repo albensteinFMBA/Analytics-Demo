@@ -69,7 +69,7 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
-    saver_spec = {'directory':'C:\saveTensorForceMoldes'}#,'file':'supercrossTensorForce001'}
+    saver_spec = {'directory':'C:\saveTensorForceMoldes','seconds':5} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
 #                - directory: model directory.
 #                - file: model filename (optional).
@@ -140,14 +140,14 @@ if __name__ == '__main__':
     
     
     # Callback function printing episode statistics
-#    def episode_finished(r):
-#        print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
-#                                                                                     reward=r.episode_rewards[-1]))
-#        return True
-#    
-#    
-#    # Start learning
-#    runner.run(episodes=3, max_episode_timesteps=40, episode_finished=episode_finished)
+    def episode_finished(r):
+        print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
+                                                                                     reward=r.episode_rewards[-1]))
+        return True
+    
+    
+    # Start learning
+    runner.run(episodes=3, max_episode_timesteps=300, episode_finished=episode_finished)
 #    runner.close()
 #    
 #    # Print statistics
@@ -156,8 +156,8 @@ if __name__ == '__main__':
 #        ar=np.mean(runner.episode_rewards[-10:]))
 #    )
 #        
-#    exeTime = (time.time() - startTime)
-#    print("cummulative execution time:", exeTime)
+    exeTime = (time.time() - startTime)
+    print("cummulative execution time:", exeTime)
     
   if runDropTest_flg:
     trk = mk_trkAccel(units='m')
