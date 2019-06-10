@@ -1,6 +1,6 @@
 # imports
 import numpy as np
-from supercross_utilities import draw_race
+import matplotlib.pyplot as plt
 
 class supercross_env: 
   # Define constants for environment model
@@ -75,6 +75,22 @@ class supercross_env:
     
     supercross_env.reset(self)
   
+  # draw results of race
+  def draw_race(self):
+    fig306, ax306 = plt.subplots()
+    ax306.plot(self.bkX[0:self.i],self.throttle[0:self.i], label='throttle')
+    ax306.plot(self.bkX[0:self.i],self.bkY[0:self.i], label='bk')
+    ax306.plot(self.trkX[0:self.i],self.trkY[0:self.i], label='trk')
+    ax306.legend()
+    ax306.grid()
+    
+    
+    fig306, ax306 = plt.subplots()
+    ax306.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle')
+    ax306.plot(self.t[0:self.i],self.bkX[0:self.i], label='bk')
+    ax306.legend()
+    ax306.grid()
+  
   # Define function to creation state, since multiple tensorForce API functions need the method
   def mk_state(self):
     # 1] calc remaining track distance
@@ -123,8 +139,8 @@ class supercross_env:
     # increment episode counter
     self.episode_cnt += 1
     #check if it's time to draw the race
-    if np.mod(self.episode_cnt,self.draw_race_frequency) == 0:
-      draw_race(self)    
+#    if np.mod(self.episode_cnt,self.draw_race_frequency) == 0:
+#      draw_race(self)    
     
     # defined initial conditions
     self.bkX1 = self.trkX[0] + self.bkXstart
@@ -200,7 +216,7 @@ class supercross_env:
         self.time = self.t[self.i]
         self.reward = 10
         if self.drawRace_flg:
-          draw_race(self)
+          self.draw_race(self)
         return
       
       # compute suspension forces. convention, extension=+ve, tension=-ve
@@ -292,7 +308,7 @@ class supercross_env:
           self.time = self.t[self.i]
           self.reward = -1e6
           if self.drawRace_flg:
-            draw_race(self)
+            self.draw_race(self)
           return
         else:
           #if the bike was going very slow, its because the first throttle cmd was negative, reset to begining

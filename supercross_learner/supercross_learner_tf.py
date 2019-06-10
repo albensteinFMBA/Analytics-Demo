@@ -69,7 +69,7 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
-    save_dir_str = './savedTest01/'
+    save_dir_str = './savedTest02/'
     saver_spec = {'directory':save_dir_str} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
 #                - directory: model directory.
@@ -144,21 +144,22 @@ if __name__ == '__main__':
     def episode_finished(r):
         print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
                                                                                      reward=r.episode_rewards[-1]))
-#        if r.episode == 2 or r.episode == 8:
-        r.agent.save_model(directory=save_dir_str)
+        if np.mod(r.episode,500) == 0:
+          r.agent.save_model(directory=save_dir_str)
+          r.environment.draw_race()
         return True
     
     
     # Start learning
-    runner.run(episodes=3, max_episode_timesteps=300, episode_finished=episode_finished)
-#    runner.close()
-#    
-#    # Print statistics
-#    print("Learning finished. Total episodes: {ep}. Average reward of last 10 episodes: {ar}.".format(
-#        ep=runner.episode,
-#        ar=np.mean(runner.episode_rewards[-10:]))
-#    )
-#        
+    runner.run(episodes=3000, max_episode_timesteps=300, episode_finished=episode_finished)
+    runner.close()
+    
+    # Print statistics
+    print("Learning finished. Total episodes: {ep}. Average reward of last 10 episodes: {ar}.".format(
+        ep=runner.episode,
+        ar=np.mean(runner.episode_rewards[-10:]))
+    )
+        
     exeTime = (time.time() - startTime)
     print("cummulative execution time:", exeTime)
     
