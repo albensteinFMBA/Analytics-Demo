@@ -43,7 +43,8 @@ if __name__ == '__main__':
   runSweepTest_flg = False  
   
   if runTfAgent_flg:
-    trk = mk_trk1(units='m') #mk_trkAccel(units='m',endX_ft=100)
+    trk={}
+    trk['trk1'] = mk_trk1(units='m') 
     env = supercross_env(trk,drawRace_flg=False)
     
     # Network as list of layers
@@ -69,7 +70,7 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
-    save_dir_str = './savedTest02/'
+    save_dir_str = './savedTest03/'
     saver_spec = {'directory':save_dir_str} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
 #                - directory: model directory.
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     
     
     # Start learning
-    runner.run(episodes=3000, max_episode_timesteps=300, episode_finished=episode_finished)
+    runner.run(episodes=4500, max_episode_timesteps=env.get_max_time_steps(), episode_finished=episode_finished)
     runner.close()
     
     # Print statistics

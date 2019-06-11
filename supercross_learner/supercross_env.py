@@ -1,6 +1,7 @@
 # imports
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 class supercross_env: 
   # Define constants for environment model
@@ -16,15 +17,30 @@ class supercross_env:
     self.g = -9.81
     
     # track
-    self.trk = trk
+    self.trkSet = trk
     
-    # agent attributes
+    # agent interface attributes
+    # states
     self.stateTrkResolution = stateTrkResolution #distance increment between samples for agents view of track ahead
     self.stateTrkVisonDist = stateTrkVisonDist #how far in disatnce the agent sees ahead
     self.stateTrkNumel = np.floor(self.stateTrkVisonDist/self.stateTrkResolution)
     self.stateShape = self.stateTrkNumel + 3
     self._states = dict(shape=(self.stateShape,), type='float')
+    # actions
     self._actions = dict(type='float', shape=(), min_value=-1, max_value=1)
+    self.tensorForceExecuteN = 100
+    # rewards
+    self.rewards_aveSpd4WorstTime = 10/3.6 # average speed of 10kph is defined as the wrost amount of time it could take to complete a track
+    self.rewards_bestTimes = {}
+    for kk in self.trkSet.keys():
+      tmp = self.trkSet.get(kk)
+      self.rewards_bestTimes[kk] = tmp[0,-1]/self.rewards_aveSpd4WorstTime
+    self.rewards_slowerThanBestTimeFactor = 2
+    self.rewards_fasterThanBestTimeFactor = 1
+
+    # define simulation end times
+    self.t_end = self.rewards_bestTimes.copy()
+    self.dt = 0.001
     
     # wheel
     self.whlR = (19/2+2)*0.0254 # ~0.3meters
@@ -51,29 +67,17 @@ class supercross_env:
     self.brkSpdThr = 0.5; # mps, speed threshold below which, brake trq is ramped down to zero
     
     # tire grip model - nu*Fy
-    self.nu = 2
-    
-    # define simulation
-    self.t_end = endTime
-    self.dt = 0.001
-    self.t=np.arange(0,self.t_end,self.dt)
-  
-    # defined track
-    # pts = mk_trk2(units='m')
-    self.trkStep = 0.05
-    self.trkX = np.arange(trk[0,0],trk[0,-1],0.05)
-    self.trkY = np.interp(self.trkX,trk[0,:],trk[1,:])
-    self.trkTheta = np.arctan(np.interp(self.trkX,trk[0,:],trk[2,:]))
-
-    # some track data for other computation outside the env
-    self.trkYmax = np.max(self.trkY)
-    self.trkXSampled = self.trkX[0::10]
-    self.trkYSampled = self.trkY[0::10]
-    
+    self.nu = 2    
+      
     self.heightInit = height
     self.bkXstart = bkXstart
     
     supercross_env.reset(self)
+    
+  def get_max_time_steps(self):
+    max_steps = max(self.t_end.values())
+    max_steps = max_steps/self.dt/self.tensorForceExecuteN
+    return max_steps
   
   # draw results of race
   def draw_race(self):
@@ -131,16 +135,33 @@ class supercross_env:
     return
   
   def execute(self,action):
-    self.step(action,100) # 100 physics time steps between each agent time step.
+    self.step(action,self.tensorForceExecuteN) # 100 physics time steps between each agent time step.
     next_state = self.mk_state()
     return  next_state, self.done, self.reward
   
   def reset(self):
+    # set track for next episode
+    self.trkKey,self.trk = random.choice(list(self.trkSet.items()))
+
+    # create time vector          
+    self.t=np.arange(0,self.t_end[self.trkKey],self.dt)
+    
     # increment episode counter
     self.episode_cnt += 1
     #check if it's time to draw the race
 #    if np.mod(self.episode_cnt,self.draw_race_frequency) == 0:
-#      draw_race(self)    
+#      draw_race(self)  
+    
+    # defined track
+    self.trkStep = 0.05
+    self.trkX = np.arange(self.trk[0,0],self.trk[0,-1],0.05)
+    self.trkY = np.interp(self.trkX,self.trk[0,:],self.trk[1,:])
+    self.trkTheta = np.arctan(np.interp(self.trkX,self.trk[0,:],self.trk[2,:]))
+
+    # some track data for other computation outside the env
+#    self.trkYmax = np.max(self.trkY)
+#    self.trkXSampled = self.trkX[0::10]
+#    self.trkYSampled = self.trkY[0::10]
     
     # defined initial conditions
     self.bkX1 = self.trkX[0] + self.bkXstart
@@ -211,10 +232,14 @@ class supercross_env:
       # step ahead in time
       
       # break if time has reached end of preallocated results vectors or out of track length
-      if (self.t[self.i]+self.dt >= self.t_end) or (self.bkX[self.i] >= self.trkX[-1]):
+      if (self.t[self.i]+self.dt >= self.t_end[self.trkKey]) or (self.bkX[self.i] >= self.trkX[-1]):
         self.done = True
         self.time = self.t[self.i]
-        self.reward = 10
+        if self.time < self.rewards_bestTimes[self.trkKey]:
+          self.rewards_bestTimes[self.trkKey] = self.time
+          self.reward = self.time*self.rewards_fasterThanBestTimeFactor
+        else:
+           self.reward = 0 
         if self.drawRace_flg:
           self.draw_race(self)
         return
@@ -353,7 +378,10 @@ class supercross_env:
       
     # done for loop
     # if not terminated, set reward to small negative value to encourage finishing race faster
-    self.reward = -self.dt*n
+    if self.time < self.rewards_bestTimes[self.trkKey]:
+      self.reward = -self.dt*n
+    else:
+      self.reward = -self.dt*n*self.rewards_slowerThanBestTimeFactor
     
     return
 
