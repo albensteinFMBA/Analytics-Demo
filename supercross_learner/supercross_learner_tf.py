@@ -12,6 +12,8 @@ import time
 from math import isinf
 from tensorforce.agents import PPOAgent
 from tensorforce.execution import Runner
+import pickle
+from collections import defaultdict
 
 # define common hyperparameters
 GAMMA = 0.9
@@ -44,15 +46,11 @@ if __name__ == '__main__':
   
   if runTfAgent_flg:
     trk={}
-    trk['trk1'] = mk_trk1(units='m') 
+    trk['trk1a'] = mk_trk1(units='m') 
+    trk['trk1b'] = mk_trk1(units='m')
     env = supercross_env(trk,drawRace_flg=False)
-    
-    # Network as list of layers
-#    network_spec = [
-#        dict(type='dense', size=np.ceil(env.stateShape*2/3), activation='relu'),
-#        dict(type='dense', size=np.ceil(env.stateShape*1/3), activation='relu')
-#        ]
-#    
+    max_episodes = 30
+ 
     # Network as list of layers
     # - Embedding layer:
     #   - For Gym environments utilizing a discrete observation space, an
@@ -70,6 +68,11 @@ if __name__ == '__main__':
         dict(type='dense', size=32),
         dict(type='dense', size=32)
     ]
+#    network_spec = [
+#        dict(type='dense', size=np.ceil(env.stateShape*2/3), activation='relu'),
+#        dict(type='dense', size=np.ceil(env.stateShape*1/3), activation='relu')
+#        ]  
+    
     save_dir_str = './savedTest03/'
     saver_spec = {'directory':save_dir_str} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
@@ -143,16 +146,50 @@ if __name__ == '__main__':
     
     # Callback function printing episode statistics
     def episode_finished(r):
+      if np.mod(r.episode,200) == 0:
         print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
-                                                                                     reward=r.episode_rewards[-1]))
-        if np.mod(r.episode,500) == 0:
-          r.agent.save_model(directory=save_dir_str)
-          r.environment.draw_race()
-        return True
+                                                                                   reward=r.episode_rewards[-1]))
+      if np.mod(r.episode,500) == 0:
+        # r.agent.save_model(directory=save_dir_str)
+        r.environment.draw_race()
+        
+      if r.environment.rewards_newBestTimeSet:
+        bestRace = copy.deepcopy(r.environment)
+        fnam = './savedEnvObjs/bestRace_' + r.environment.trkKey + '.pkl'
+        pkl_file = open(fnam, 'wb')
+        pickle.dump(bestRace, pkl_file) # write the pickled data to the file jar
+        pkl_file.close()
+        
+      return True
     
     
     # Start learning
-    runner.run(episodes=4500, max_episode_timesteps=env.get_max_time_steps(), episode_finished=episode_finished)
+    runner.run(episodes=max_episodes, max_episode_timesteps=env.get_max_time_steps(), episode_finished=episode_finished)
+    runner.agent.save_model(directory=save_dir_str)
+    # plot agent learning performance
+    fig=plt.figure()
+    ax = fig.add_subplot(111)
+    ax5 = fig.add_subplot(211)
+    for kk in runner.environment.trkSet.keys():
+      ax5.plot(runner.environment.raceTimes[kk], label=kk)
+    ax5.legend()
+    ax5.set_ylabel('all race times (s)')
+    
+    ax6 = fig.add_subplot(212)
+    for kk in runner.environment.trkSet.keys():
+      ax6.plot(runner.environment.bestTimesEp[kk],runner.environment.bestTimes[kk], label=kk)
+    ax6.legend()
+    ax6.set_xlabel('episodes') # common x label
+    ax6.set_ylabel('best race times (s)')
+    
+    for kk in runner.environment.trkSet.keys():
+      fnam = './savedEnvObjs/bestRace_' + kk + '.pkl'
+      pkl_file = open(fnam, 'rb') # connect to the pickled data
+      bestRace = pickle.load(pkl_file) # load it into a variable
+      raceName = 'bike tracjectory for best race for ' + kk
+      bestRace.draw_race(raceName=raceName)    
+      pkl_file.close()
+    
     runner.close()
     
     # Print statistics
@@ -160,6 +197,8 @@ if __name__ == '__main__':
         ep=runner.episode,
         ar=np.mean(runner.episode_rewards[-10:]))
     )
+    
+
         
     exeTime = (time.time() - startTime)
     print("cummulative execution time:", exeTime)

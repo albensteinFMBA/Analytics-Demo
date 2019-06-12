@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+from collections import defaultdict
 
 class supercross_env: 
   # Define constants for environment model
@@ -11,13 +12,17 @@ class supercross_env:
     self.drawRace_flg = drawRace_flg
     self.episode_cnt = 0 # a counter tracking the number of episodes completed for training, used to draw_race every once in a while
     self.draw_race_frequency = draw_race_frequency
-    
-    
+        
     # constants
     self.g = -9.81
     
     # track
     self.trkSet = trk
+    
+    # agent performance tracking
+    self.raceTimes = defaultdict(list)
+    self.bestTimes = defaultdict(list)
+    self.bestTimesEp = defaultdict(list)
     
     # agent interface attributes
     # states
@@ -37,6 +42,7 @@ class supercross_env:
       self.rewards_bestTimes[kk] = tmp[0,-1]/self.rewards_aveSpd4WorstTime
     self.rewards_slowerThanBestTimeFactor = 2
     self.rewards_fasterThanBestTimeFactor = 1
+    self.rewards_newBestTimeSet = False
 
     # define simulation end times
     self.t_end = self.rewards_bestTimes.copy()
@@ -80,20 +86,29 @@ class supercross_env:
     return max_steps
   
   # draw results of race
-  def draw_race(self):
-    fig306, ax306 = plt.subplots()
+  def draw_race(self,raceName=None):
+    fig =plt.figure()
+    ax306 = fig.add_subplot(211)
     ax306.plot(self.bkX[0:self.i],self.throttle[0:self.i], label='throttle')
     ax306.plot(self.bkX[0:self.i],self.bkY[0:self.i], label='bk')
     ax306.plot(self.trkX[0:self.i],self.trkY[0:self.i], label='trk')
     ax306.legend()
     ax306.grid()
-    
-    
-    fig306, ax306 = plt.subplots()
-    ax306.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle')
-    ax306.plot(self.t[0:self.i],self.bkX[0:self.i], label='bk')
-    ax306.legend()
-    ax306.grid()
+    ax306.set_xlabel('X pos(m)')
+    ax306.set_ylabel('Y pos(m)/throttle(norm)')
+    if raceName is None:
+      ax306.set_title('bike trajectory')
+    else:
+      ax306.set_title(raceName)
+      
+    ax307 = fig.add_subplot(212)
+    ax307.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle')
+    ax307.plot(self.t[0:self.i],self.bkX[0:self.i], label='bk')
+    ax307.legend()
+    ax307.grid()
+    ax307.set_xlabel('time (s)')
+    ax307.set_ylabel('X pos(m)/throttle(norm*10)')
+    #ax307.set_title('dist vs time')
   
   # Define function to creation state, since multiple tensorForce API functions need the method
   def mk_state(self):
@@ -150,7 +165,9 @@ class supercross_env:
     self.episode_cnt += 1
     #check if it's time to draw the race
 #    if np.mod(self.episode_cnt,self.draw_race_frequency) == 0:
-#      draw_race(self)  
+#      draw_race(self) 
+    # reset best time tracker
+    self.rewards_newBestTimeSet = False
     
     # defined track
     self.trkStep = 0.05
@@ -235,14 +252,21 @@ class supercross_env:
       if (self.t[self.i]+self.dt >= self.t_end[self.trkKey]) or (self.bkX[self.i] >= self.trkX[-1]):
         self.done = True
         self.time = self.t[self.i]
+        self.raceTimes[self.trkKey].append(self.time)
         if self.time < self.rewards_bestTimes[self.trkKey]:
           self.rewards_bestTimes[self.trkKey] = self.time
           self.reward = self.time*self.rewards_fasterThanBestTimeFactor
+          self.rewards_newBestTimeSet = True
+          self.bestTimes[self.trkKey].append(self.time)
+          self.bestTimesEp[self.trkKey].append(self.episode_cnt)
         else:
            self.reward = 0 
         if self.drawRace_flg:
           self.draw_race(self)
         return
+      
+      
+    
       
       # compute suspension forces. convention, extension=+ve, tension=-ve
       if self.sKnonLin_flg:
