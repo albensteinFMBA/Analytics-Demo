@@ -21,6 +21,7 @@ class supercross_env:
     
     # agent performance tracking
     self.raceTimes = defaultdict(list)
+    self.raceTimesEp = defaultdict(list)
     self.bestTimes = defaultdict(list)
     self.bestTimesEp = defaultdict(list)
     
@@ -102,12 +103,13 @@ class supercross_env:
       ax306.set_title(raceName)
       
     ax307 = fig.add_subplot(212)
-    ax307.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle')
-    ax307.plot(self.t[0:self.i],self.bkX[0:self.i], label='bk')
+    ax307.plot(self.t[0:self.i],self.bkX[0:self.i], label='xpos(m)')
+    ax307.plot(self.t[0:self.i],self.bkv[0:self.i], label='spd(m/s)')
+    ax307.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle(norm*10)')
     ax307.legend()
     ax307.grid()
     ax307.set_xlabel('time (s)')
-    ax307.set_ylabel('X pos(m)/throttle(norm*10)')
+    #ax307.set_ylabel('X pos(m)/throttle(norm*10)')
     #ax307.set_title('dist vs time')
   
   # Define function to creation state, since multiple tensorForce API functions need the method
@@ -253,6 +255,7 @@ class supercross_env:
         self.done = True
         self.time = self.t[self.i]
         self.raceTimes[self.trkKey].append(self.time)
+        self.raceTimesEp[self.trkKey].append(self.episode_cnt)
         if self.time < self.rewards_bestTimes[self.trkKey]:
           self.rewards_bestTimes[self.trkKey] = self.time
           self.reward = self.time*self.rewards_fasterThanBestTimeFactor

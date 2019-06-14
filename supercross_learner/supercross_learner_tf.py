@@ -49,7 +49,7 @@ if __name__ == '__main__':
     trk['trk1a'] = mk_trk1(units='m') 
     trk['trk1b'] = mk_trk1(units='m')
     env = supercross_env(trk,drawRace_flg=False)
-    max_episodes = 30
+    max_episodes = 100
  
     # Network as list of layers
     # - Embedding layer:
@@ -167,17 +167,19 @@ if __name__ == '__main__':
     runner.run(episodes=max_episodes, max_episode_timesteps=env.get_max_time_steps(), episode_finished=episode_finished)
     runner.agent.save_model(directory=save_dir_str)
     # plot agent learning performance
+    first_episode = runner.episode - max_episodes
     fig=plt.figure()
-    ax = fig.add_subplot(111)
     ax5 = fig.add_subplot(211)
     for kk in runner.environment.trkSet.keys():
-      ax5.plot(runner.environment.raceTimes[kk], label=kk)
+      eps = [x + first_episode for x in runner.environment.raceTimesEp[kk]]
+      ax5.plot(eps,runner.environment.raceTimes[kk], label=kk)
     ax5.legend()
     ax5.set_ylabel('all race times (s)')
     
     ax6 = fig.add_subplot(212)
     for kk in runner.environment.trkSet.keys():
-      ax6.plot(runner.environment.bestTimesEp[kk],runner.environment.bestTimes[kk], label=kk)
+      eps = [x + first_episode for x in runner.environment.bestTimesEp[kk]]
+      ax6.plot(eps,runner.environment.bestTimes[kk], label=kk)
     ax6.legend()
     ax6.set_xlabel('episodes') # common x label
     ax6.set_ylabel('best race times (s)')
