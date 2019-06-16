@@ -3,15 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 from collections import defaultdict
+from pathlib import Path
+import pickle
 
 class supercross_env: 
   # Define constants for environment model
-  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=30,drawRace_flg=False,draw_race_frequency=500):
+  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=50,drawRace_flg=False,draw_race_frequency=500,save_dir_str=None):
     
     #UI controls
     self.drawRace_flg = drawRace_flg
     self.episode_cnt = 0 # a counter tracking the number of episodes completed for training, used to draw_race every once in a while
     self.draw_race_frequency = draw_race_frequency
+    self.save_dir_str = save_dir_str
         
     # constants
     self.g = -9.81
@@ -29,24 +32,33 @@ class supercross_env:
     # states
     self.stateTrkResolution = stateTrkResolution #distance increment between samples for agents view of track ahead
     self.stateTrkVisonDist = stateTrkVisonDist #how far in disatnce the agent sees ahead
-    self.stateTrkNumel = np.floor(self.stateTrkVisonDist/self.stateTrkResolution)
-    self.stateShape = self.stateTrkNumel + 3
+    self.stateTrkNumel = int(np.floor(self.stateTrkVisonDist/self.stateTrkResolution))
+    self.stateShape = int(self.stateTrkNumel + 3)
     self._states = dict(shape=(self.stateShape,), type='float')
     # actions
     self._actions = dict(type='float', shape=(), min_value=-1, max_value=1)
     self.tensorForceExecuteN = 100
     # rewards
     self.rewards_aveSpd4WorstTime = 10/3.6 # average speed of 10kph is defined as the wrost amount of time it could take to complete a track
+    self.t_end = {}
     self.rewards_bestTimes = {}
     for kk in self.trkSet.keys():
+      # compute and set the time limit for the track
       tmp = self.trkSet.get(kk)
-      self.rewards_bestTimes[kk] = tmp[0,-1]/self.rewards_aveSpd4WorstTime
+      self.t_end[kk] = tmp[0,-1]/self.rewards_aveSpd4WorstTime
+      fnam = save_dir_str + 'bestRace_' + kk + '.pkl'
+      best_file = Path(fnam)
+      if best_file.is_file():
+        pkl_file = open(fnam, 'rb') # connect to the pickled data
+        trkEnv = pickle.load(pkl_file) # load it into a variable
+        self.rewards_bestTimes[kk] = trkEnv.rewards_bestTimes[kk]
+      else:
+        self.rewards_bestTimes[kk] = self.t_end[kk]
     self.rewards_slowerThanBestTimeFactor = 2
     self.rewards_fasterThanBestTimeFactor = 1
     self.rewards_newBestTimeSet = False
 
-    # define simulation end times
-    self.t_end = self.rewards_bestTimes.copy()
+    # define simulation time step
     self.dt = 0.001
     
     # wheel
@@ -103,9 +115,9 @@ class supercross_env:
       ax306.set_title(raceName)
       
     ax307 = fig.add_subplot(212)
+    ax307.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle(norm*10)')
     ax307.plot(self.t[0:self.i],self.bkX[0:self.i], label='xpos(m)')
     ax307.plot(self.t[0:self.i],self.bkv[0:self.i], label='spd(m/s)')
-    ax307.plot(self.t[0:self.i],np.multiply(self.throttle[0:self.i],10), label='throttle(norm*10)')
     ax307.legend()
     ax307.grid()
     ax307.set_xlabel('time (s)')
@@ -117,7 +129,7 @@ class supercross_env:
     # 1] calc remaining track distance
     remDist = self.trkX[-1] - self.bkX[self.i]
     if remDist < 1:
-      trkY_samples = np.zeros(int(self.stateTrkNumel))
+      trkY_samples = np.multiply(np.ones(int(self.stateTrkNumel)),-1)
     else:
       # find trkX index that is stateTrkVisonDist meters ahead
       idx1 = (np.abs(self.trkX - self.bkX[self.i])).argmin()
@@ -128,10 +140,10 @@ class supercross_env:
         idx2 = (np.abs(self.trkX - (self.bkX[self.i]+self.stateTrkVisonDist*1.05))).argmin()
         # 2] get trkX and trkY data points that are stateTrkVisonDist ahead
         # 3] resample to X direction resolution of stateTrkResolution meters
-        trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist),self.stateTrkResolution)
+        trkX_samples = np.arange(self.bkX[self.i],(self.bkX[self.i]+self.stateTrkVisonDist*1.05),self.stateTrkResolution)
       trkY_samples = np.interp(trkX_samples,self.trkX[idx1:idx2],self.trkY[idx1:idx2])
-    if trkY_samples.size < 30:
-      trkY_samples = np.append(trkY_samples, np.zeros(30))
+    if trkY_samples.size < self.stateTrkNumel:
+      trkY_samples = np.append(trkY_samples, np.multiply(np.ones(int(self.stateTrkNumel)),-1))
     # 4] ensure the number of points is equal to stateTrkNumel, crop additional points from furthest ahead
     trkY_samples = trkY_samples[0:int(self.stateTrkNumel)]
     # 5] get all other state variables
@@ -363,7 +375,7 @@ class supercross_env:
             self.draw_race(self)
           return
         else:
-          #if the bike was going very slow, its because the first throttle cmd was negative, reset to begining
+          #if the bike was going very slow, its because the first throttle cmd was negative, and numerical error, etc.,so just move the bike back to the start position
           self.bkvX[self.i+1]  = 0
           self.bkX[self.i+1]   = 0
       

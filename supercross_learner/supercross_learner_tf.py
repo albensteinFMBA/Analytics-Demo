@@ -46,10 +46,11 @@ if __name__ == '__main__':
   
   if runTfAgent_flg:
     trk={}
-    trk['trk1a'] = mk_trk1(units='m') 
-    trk['trk1b'] = mk_trk1(units='m')
-    env = supercross_env(trk,drawRace_flg=False)
-    max_episodes = 100
+    trk['trk1'] = mk_trk1(units='m') 
+    trk['trk2'] = mk_trk2(units='m')
+    save_dir_str = './savedTest05/'
+    env = supercross_env(trk,drawRace_flg=False,save_dir_str=save_dir_str)
+    max_episodes = 10000
  
     # Network as list of layers
     # - Embedding layer:
@@ -65,15 +66,16 @@ if __name__ == '__main__':
     network_spec = [
         # dict(type='embedding', indices=100, size=32),
         # dict(type'flatten'),
-        dict(type='dense', size=32),
-        dict(type='dense', size=32)
+        dict(type='dense', size=53),
+        dict(type='dense', size=36),
+        dict(type='dense', size=20)
     ]
 #    network_spec = [
 #        dict(type='dense', size=np.ceil(env.stateShape*2/3), activation='relu'),
 #        dict(type='dense', size=np.ceil(env.stateShape*1/3), activation='relu')
 #        ]  
     
-    save_dir_str = './savedTest03/'
+    
     saver_spec = {'directory':save_dir_str} #,'file':'supercrossTensorForce001'}
 #   saver (spec): Saver specification, with the following attributes (default: none):
 #                - directory: model directory.
@@ -146,16 +148,17 @@ if __name__ == '__main__':
     
     # Callback function printing episode statistics
     def episode_finished(r):
-      if np.mod(r.episode,200) == 0:
+      if np.mod(r.episode,500) == 0:
         print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
                                                                                    reward=r.episode_rewards[-1]))
-      if np.mod(r.episode,500) == 0:
-        # r.agent.save_model(directory=save_dir_str)
-        r.environment.draw_race()
+      if r.episode > 500 and r.environment.rewards_newBestTimeSet: # np.mod(r.episode,1000) == 0:
+        print("New best time of {time} set on track {trk} at episode {ep}".format(trk=r.environment.trkKey, time=r.environment.time, ep=r.episode))
+        raceName = 'best race,' + r.environment.trkKey + ', ep:' + str(r.episode)
+        r.environment.draw_race(raceName=raceName)
         
       if r.environment.rewards_newBestTimeSet:
         bestRace = copy.deepcopy(r.environment)
-        fnam = './savedEnvObjs/bestRace_' + r.environment.trkKey + '.pkl'
+        fnam = r.environment.save_dir_str + 'bestRace_' + r.environment.trkKey + '.pkl'
         pkl_file = open(fnam, 'wb')
         pickle.dump(bestRace, pkl_file) # write the pickled data to the file jar
         pkl_file.close()
@@ -185,7 +188,7 @@ if __name__ == '__main__':
     ax6.set_ylabel('best race times (s)')
     
     for kk in runner.environment.trkSet.keys():
-      fnam = './savedEnvObjs/bestRace_' + kk + '.pkl'
+      fnam = save_dir_str + 'bestRace_' + kk + '.pkl'
       pkl_file = open(fnam, 'rb') # connect to the pickled data
       bestRace = pickle.load(pkl_file) # load it into a variable
       raceName = 'bike tracjectory for best race for ' + kk
