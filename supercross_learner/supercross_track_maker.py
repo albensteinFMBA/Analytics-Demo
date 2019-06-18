@@ -4,6 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math as math
+import random
 
 # all dimension in meters, but input might be in feet.
 ft2m = 0.3048
@@ -138,6 +139,10 @@ def mk_trpl(startX_ft=0,gap_ft=60):
   
   return pts
 
+def mk_table(startX_ft=0,flat_ft=20):
+  pts = mk_jump(20,20,5,flat_ft=flat_ft,startX_ft=startX_ft, minRadFace_ft=10, minRadTop_ft=3,minRadLand_ft=15)
+  return pts
+
 def mk_onoff(startX_ft=0,gap1_ft=6,gap2_ft=1):
 #  startX_ft=0
 #  gap_ft = 10
@@ -199,6 +204,51 @@ def mk_trkAccel(units='ft',endX_ft=2000):
     
   return pts
 
+def mk_trkRand(endX_m=800):
+  # feature encoding: 
+  feature_list = [1,2,3]
+    # 0.X=flat of length X*2 meters, X limits [1,3]
+    # 1.X=table top, with top length of X meters, X limits [3,6]
+    # 2.X=on/off, with X changing nothing, X limits [0]
+    # 3.X=triple jump, with X changing nothing, X limits [0]
+    # 4.X=whoops, with X*3 meter length of whoops section, X limits [2,6]
+  flatChar_list = [1,2,3]
+  featureChar_dict = {0:[1,2,3],1:[3,4,5,6],2:[0],3:[0],4:[2,3,4,5,6]}
+  # create a feature encoding that results in endX_m, by getting a sequence of random number that respect the limits. 0-4.[see limits for each]
+  # use feature encoding to generate track profile
+  featureEncoding = []
+  pts = mk_flat(len_ft=50)
+  chk = False
+  while not chk:
+    feature_tmp = random.choice(feature_list)
+    characteristic_tmp = random.choice(featureChar_dict[feature_tmp])
+    val = float(feature_tmp + characteristic_tmp/10)
+    featureEncoding.append(val)
+    startX_ft = pts[0,-1] + 1
+    if feature_tmp == 1:
+      pts_tmp = mk_table(startX_ft=startX_ft,flat_ft=characteristic_tmp/ft2m)
+    elif feature_tmp == 2:
+      pts_tmp = mk_onoff(startX_ft=startX_ft)
+    elif feature_tmp == 3:
+      pts_tmp = mk_trpl(startX_ft=startX_ft)
+    elif feature_tmp == 4:
+      pass # whoop feature function does exist yet
+    
+    flatChar_tmp = random.choice(flatChar_list)
+    val = float(0 + flatChar_tmp/10)
+    featureEncoding.append(val)
+    pts_flat = mk_flat(len_ft=flatChar_tmp*2/ft2m)
+    pts = np.concatenate((pts, pts_tmp, pts_flat), axis=1)
+  
+    chk = pts[0,-1] >= endX_m/ft2m
+  # add gradient
+  pts = convert_units_to_meters(pts) 
+  pts = addTrkGrad(pts)
+  # package track and encoding in np array to be passed to supercross_env
+#  _,trkLen = pts.shape()
+  return pts
+    
+
 if __name__ == '__main__':
   ang=30
   face_deg = 30
@@ -214,8 +264,9 @@ if __name__ == '__main__':
 #  pts = mk_trpl()
 #  pts = mk_onoff()
 #  pts = mk_trk1()
-  pts = mk_trk2()
+#  pts = mk_trk2()
 #  pts = mk_trk1(units='m')
+  pts = mk_trkRand()
   
   
   
