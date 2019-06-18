@@ -99,7 +99,7 @@ class supercross_env:
     return max_steps
   
   # draw results of race
-  def draw_race(self,raceName=None):
+  def draw_race(self,raceName=None,saveFig=None,ep=None):
     fig =plt.figure()
     ax306 = fig.add_subplot(211)
     ax306.plot(self.bkX[0:self.i],self.throttle[0:self.i], label='throttle')
@@ -121,8 +121,10 @@ class supercross_env:
     ax307.legend()
     ax307.grid()
     ax307.set_xlabel('time (s)')
-    #ax307.set_ylabel('X pos(m)/throttle(norm*10)')
-    #ax307.set_title('dist vs time')
+    if saveFig:
+      fnam = self.save_dir_str + 'best_race_' + self.trkKey + '_ep' + str(ep) + '.png'
+      fig.savefig(fnam)
+      plt.close(fig)
   
   # Define function to creation state, since multiple tensorForce API functions need the method
   def mk_state(self):

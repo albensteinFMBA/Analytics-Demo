@@ -46,11 +46,11 @@ if __name__ == '__main__':
   
   if runTfAgent_flg:
     trk={}
-    trk['trk1'] = mk_trk1(units='m') 
+    trk['trk1'] = mk_trk1(units='m')
     trk['trk2'] = mk_trk2(units='m')
     save_dir_str = './savedTest05/'
     env = supercross_env(trk,drawRace_flg=False,save_dir_str=save_dir_str)
-    max_episodes = 10000
+    max_episodes = 50
  
     # Network as list of layers
     # - Embedding layer:
@@ -151,10 +151,10 @@ if __name__ == '__main__':
       if np.mod(r.episode,500) == 0:
         print("Finished episode {ep} after {ts} timesteps (reward: {reward})".format(ep=r.episode, ts=r.episode_timestep,
                                                                                    reward=r.episode_rewards[-1]))
-      if r.episode > 500 and r.environment.rewards_newBestTimeSet: # np.mod(r.episode,1000) == 0:
+      if r.episode > 1 and r.environment.rewards_newBestTimeSet: # np.mod(r.episode,1000) == 0:
         print("New best time of {time} set on track {trk} at episode {ep}".format(trk=r.environment.trkKey, time=r.environment.time, ep=r.episode))
         raceName = 'best race,' + r.environment.trkKey + ', ep:' + str(r.episode)
-        r.environment.draw_race(raceName=raceName)
+        r.environment.draw_race(raceName=raceName,saveFig=True,ep=r.episode)
         
       if r.environment.rewards_newBestTimeSet:
         bestRace = copy.deepcopy(r.environment)
