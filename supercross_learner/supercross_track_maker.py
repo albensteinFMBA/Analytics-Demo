@@ -219,12 +219,14 @@ def mk_trkRand(endX_m=800):
   featureEncoding = []
   pts = mk_flat(len_ft=50)
   chk = False
+  while_cnt = 0
   while not chk:
     feature_tmp = random.choice(feature_list)
     characteristic_tmp = random.choice(featureChar_dict[feature_tmp])
     val = float(feature_tmp + characteristic_tmp/10)
     featureEncoding.append(val)
     startX_ft = pts[0,-1] + 1
+#    print('startX_ft={val}'.format(val=startX_ft))
     if feature_tmp == 1:
       pts_tmp = mk_table(startX_ft=startX_ft,flat_ft=characteristic_tmp/ft2m)
     elif feature_tmp == 2:
@@ -237,16 +239,26 @@ def mk_trkRand(endX_m=800):
     flatChar_tmp = random.choice(flatChar_list)
     val = float(0 + flatChar_tmp/10)
     featureEncoding.append(val)
-    pts_flat = mk_flat(len_ft=flatChar_tmp*2/ft2m)
+    startX_ft = pts_tmp[0,-1] + 1
+    pts_flat = mk_flat(startX_ft=startX_ft,len_ft=flatChar_tmp*2/ft2m)
     pts = np.concatenate((pts, pts_tmp, pts_flat), axis=1)
   
     chk = pts[0,-1] >= endX_m/ft2m
+    if pts[0,-1] >= endX_m/ft2m:
+      print('break due to track length')
+      break
+    while_cnt += 1
+    if while_cnt >=8:
+      print('break due to loop count')
+      break
+    
   # add gradient
   pts = convert_units_to_meters(pts) 
   pts = addTrkGrad(pts)
   # package track and encoding in np array to be passed to supercross_env
 #  _,trkLen = pts.shape()
-  return pts
+  print('featureEncoding={d}'.format(d=featureEncoding))
+  return pts, featureEncoding
     
 
 if __name__ == '__main__':
@@ -261,12 +273,12 @@ if __name__ == '__main__':
   
 #  pts = mk_jump(30, 30, 6, minRadFace_ft=15, minRadTop_ft=3,minRadLand_ft=10)
 #  pts = mk_jump(face_deg, land_deg, height_ft)
-#  pts = mk_trpl()
+  pts = mk_trpl()
 #  pts = mk_onoff()
 #  pts = mk_trk1()
 #  pts = mk_trk2()
 #  pts = mk_trk1(units='m')
-  pts = mk_trkRand()
+#  pts, featureEncoding = mk_trkRand()
   
   
   
