@@ -46,7 +46,10 @@ class supercross_env:
       # compute and set the time limit for the track
       tmp = self.trkSet.get(kk)
       self.t_end[kk] = tmp[0,-1]/self.rewards_aveSpd4WorstTime
-      fnam = save_dir_str + 'bestRace_' + kk + '.pkl'
+      if save_dir_str is not None:
+        fnam = save_dir_str + 'bestRace_' + kk + '.pkl'
+      else:
+        fnam = './bestRace_' + kk + '.pkl'
       best_file = Path(fnam)
       if best_file.is_file():
         pkl_file = open(fnam, 'rb') # connect to the pickled data

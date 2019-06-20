@@ -37,8 +37,8 @@ if __name__ == '__main__':
     # performance tracking
   startTime=time.time() 
     # control flow
-  runTfAgent_flg = True
-  runDropTest_flg = False
+  runTfAgent_flg = False
+  runDropTest_flg = True
   runAccelTest_flg = False
   runDblTest_flg = False
   runStartStopTest_flg = False
@@ -209,7 +209,8 @@ if __name__ == '__main__':
     print("cummulative execution time:", exeTime)
     
   if runDropTest_flg:
-    trk = mk_trkAccel(units='m')
+    trk={}
+    trk['trkAccel'] = mk_trkAccel(units='m')
     # perform a simple drop test to check suspension behavior. e.g. comp and rebound damping, sag, settling time, etc.
     endTimeDrop =2.0
     envDrop = supercross_env(trk,height=1.0,endTime=endTimeDrop,sK=11e3,sB=2700,sSag=0.2)
