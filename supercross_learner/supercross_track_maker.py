@@ -165,7 +165,7 @@ def addTrkGrad(pts):
   
 
 def mk_trk1(units='ft'): #just a triple jump
-  pts1 = mk_flat(endX_ft=120)
+  pts1 = mk_flat(endX_ft=80)
   pts2 = mk_trpl(startX_ft=(pts1[0,-1]+secLen))
   pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=30)
   
@@ -187,6 +187,19 @@ def mk_trk2(units='ft'): #in run, triple, onoff, triple
   pts7 = mk_flat(startX_ft=(pts6[0,-1]+secLen),len_ft=30)
   
   pts = np.concatenate((pts1, pts2, pts3, pts4, pts5, pts6, pts7), axis=1)
+  if units == 'm':
+    pts = convert_units_to_meters(pts)
+  
+  pts = addTrkGrad(pts)
+  
+  return pts
+
+def mk_trk3(units='ft'): #just a triple jump
+  pts1 = mk_flat(endX_ft=40)
+  pts2 = mk_onoff(startX_ft=(pts1[0,-1]+secLen))
+  pts3 = mk_flat(startX_ft=(pts2[0,-1]+secLen),len_ft=30)
+  
+  pts = np.concatenate((pts1, pts2, pts3), axis=1)
   if units == 'm':
     pts = convert_units_to_meters(pts)
   
@@ -273,10 +286,11 @@ if __name__ == '__main__':
   
 #  pts = mk_jump(30, 30, 6, minRadFace_ft=15, minRadTop_ft=3,minRadLand_ft=10)
 #  pts = mk_jump(face_deg, land_deg, height_ft)
-  pts = mk_trpl()
+#  pts = mk_trpl()
 #  pts = mk_onoff()
 #  pts = mk_trk1()
 #  pts = mk_trk2()
+  pts = mk_trk3()
 #  pts = mk_trk1(units='m')
 #  pts, featureEncoding = mk_trkRand()
   
