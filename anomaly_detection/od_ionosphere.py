@@ -12,6 +12,9 @@ from pyod.models.feature_bagging import FeatureBagging as FB
 from skopt import gp_minimize 
 
 
+objValCase = 3
+glb_verbose = False
+
 def Rprecision_f(Y_train, scores_pred):
   # compute R-precision
   idxTrue = np.where(Y_train == 1) # get indices of true anomalies
@@ -21,8 +24,16 @@ def Rprecision_f(Y_train, scores_pred):
   Rprecision = len(intersect)/t 
   return Rprecision
 
-def objVal_f(Rprecision):
-  objVal = Rprecision*-1 # *-1 ause larger Rprecision is better, but gp_minimize seeks to minimize the objVal 
+def objVal_f(Rprecision,y_pred,Y_train):
+  # define different option of objVal
+  if objValCase == 1  :
+    objVal = Rprecision*-1 # *-1 ause larger Rprecision is better, but gp_minimize seeks to minimize the objVal 
+  elif objValCase == 2:
+    objVal = (y_pred != Y_train).sum() # Num of Errors in prediction
+  elif objValCase == 3:
+    objVal = 1 - Rprecision # Num of Errors in prediction
+  else:
+    objVal = Rprecision*-1
   return objVal
 
 def obj_func_kNN(params):
@@ -43,17 +54,83 @@ def obj_func_kNN(params):
   
   scores_pred = clf.decision_function(X_train)*-1 # predict raw anomaly score
   Rprecision = Rprecision_f(Y_train, scores_pred)
-  print('R Precision : ',Rprecision)
+  if glb_verbose:
+    print('R Precision : ',Rprecision)
   
-  return objVal_f(Rprecision)
+  y_pred = clf.predict(X_train) # prediction of a datapoint category outlier or inlier
+  objVal = objVal_f(Rprecision,y_pred,Y_train)
+  
+  return objVal
+
+def obj_func_LOF(params):
+  ## objective function used in baseian optimization
+  outlier_fraction=params[0]
+  n_neighbors=params[1]
+  algorithm=params[2]
+  leaf_size=params[3]
+  
+  # load data set to function work space
+  Y_train = np.load('Y_train.npy')
+  X_train = np.load('X_train.npy')
+    
+  # create model  
+  clf = LOF(n_neighbors=n_neighbors,algorithm=algorithm,leaf_size=leaf_size,contamination=outlier_fraction);
+  # fit the dataset to the model
+  clf.fit(X_train)
+  
+  scores_pred = clf.decision_function(X_train)*-1 # predict raw anomaly score
+  Rprecision = Rprecision_f(Y_train, scores_pred)
+  if glb_verbose:
+    print('R Precision : ',Rprecision)
+    
+  y_pred = clf.predict(X_train) # prediction of a datapoint category outlier or inlier
+  objVal = objVal_f(Rprecision,y_pred,Y_train)
+  
+  return objVal
+
+def save_print_output_f(mdlNam_s,res_gp,lastTime):
+  exeTime = (time.time() - lastTime)
+  lastTime = time.time()
+  print("cummulative execution time :", mdlNam_s, exeTime)
+  print("idx for best run :", mdlNam_s, np.argmin(res_gp.func_vals))
+  print("params for best run :", mdlNam_s, res_gp.x_iters[np.argmin(res_gp.func_vals)])
+  
+  fnam_s = 'od_ionosphere_opt_results_' + mdlNam_s + '.txt'
+  with open(fnam_s, 'w') as f:
+    f.write("idx for best run: %s\n" % np.argmin(res_gp.func_vals))
+    f.write("params for best run: %s\n" % res_gp.x_iters[np.argmin(res_gp.func_vals)])
+    f.write("\n\nres_gp.x_iters:\n")
+    for item in res_gp.x_iters:
+        f.write("%s\n" % item)
+    f.write("\n\nres_gp.func_vals:\n")
+    for item in res_gp.func_vals:
+        f.write("%s\n" % item)
+        
+  return lastTime
+
+def opt_visualization_f(mdlNam_s, res_gp):
+  iterations = np.arange(1,len(res_gp.func_vals)+1,1)
+  iters_params = np.array(res_gp.x_iters)
+  
+  fig=plt.figure()
+  ax5 = fig.add_subplot(211)
+  ax5.plot(iterations,res_gp.func_vals)
+  ax5.set_ylabel('Objective Value')
+  
+  ax6 = fig.add_subplot(212)
+  ax6.plot(iterations,iters_params[:,1], label='k')
+  xlable_s = 'opt loops' + mdlNam_s
+  ax6.set_xlabel(xlable_s) # common x label
+  ax6.set_ylabel('k')
 
 if __name__ == '__main__':
   lastTime=time.time()
   loadData = False
-  runMdlCheat = True
-  runBayesOpt = False
+  runMdlCheat = False
+  runBayesOptKNN = True
+  runBayesOptLOF = True
   runResultsPlots = False
-  runAll = True
+  runAll = False
   breakAll = False
   
   # first time, load the web data, process, and save to numpy files. every other time, load numpy files
@@ -100,148 +177,40 @@ if __name__ == '__main__':
     
     intersect = np.intersect1d(idxTrue,idxPred)
     Rprecision = len(intersect)/t
-    print('R Precision : ',Rprecision)
+    if glb_verbose:
+      print('R Precision : ',Rprecision)
     
-  if runBayesOpt or runAll:
-    res_gp = gp_minimize(obj_func_kNN,
+  if runBayesOptKNN:
+    res_gp_knn = gp_minimize(obj_func_kNN,
                        [(0.001, 0.5), (2, 10),['largest','mean','median'],(0.1, 10)], # outlier_fraction, n_neighbors, method, radius
                        n_calls=30,
                        n_random_starts=10,
-                       verbose=False)
-  
-    exeTime = (time.time() - lastTime)
-    print("cummulative execution time:", exeTime)
-    print("idx for best run:", np.argmin(res_gp.func_vals))
-    print("params for best run:", res_gp.x_iters[np.argmin(res_gp.func_vals)])
-    
-    with open('od_ionosphere_opt_results.txt', 'w') as f:
-      f.write("idx for best run: %s\n" % np.argmin(res_gp.func_vals))
-      f.write("params for best run: %s\n" % res_gp.x_iters[np.argmin(res_gp.func_vals)])
-      f.write("\n\nres_gp.x_iters:\n")
-      for item in res_gp.x_iters:
-          f.write("%s\n" % item)
-      f.write("\n\nres_gp.func_vals:\n")
-      for item in res_gp.func_vals:
-          f.write("%s\n" % item)
+                       verbose=glb_verbose)
+    mdlNam_s = 'kNN'
+    lastTime = save_print_output_f(mdlNam_s,res_gp_knn,lastTime)  
+    opt_visualization_f(mdlNam_s, res_gp_knn)
+          
+  if runBayesOptLOF:
+    res_gp_lof = gp_minimize(obj_func_LOF,
+                       [(0.001, 0.5), (2, 10),['auto', 'ball_tree', 'kd_tree', 'brute'],(10,40)], # outlier_fraction, n_neighbors, algo, leaf size
+                       n_calls=30,
+                       n_random_starts=10,
+                       verbose=glb_verbose)
+    mdlNam_s = 'LOF'
+    lastTime = save_print_output_f(mdlNam_s,res_gp_lof,lastTime)
+    opt_visualization_f(mdlNam_s, res_gp_lof)
 
   if runResultsPlots or runAll:
-    iterations = np.arange(1,len(res_gp.func_vals)+1,1)
-    iters_params = np.array(res_gp.x_iters)
+    iterations = np.arange(1,len(res_gp_knn.func_vals)+1,1)
+    iters_params = np.array(res_gp_knn.x_iters)
     
     fig=plt.figure()
     ax5 = fig.add_subplot(211)
-    ax5.plot(iterations,res_gp.func_vals, label='# errors')
+    ax5.plot(iterations,res_gp_knn.func_vals, label='# errors')
     ax5.legend()
-    ax5.set_ylabel('Num of Errors')
+    ax5.set_ylabel('Objective Value')
     
     ax6 = fig.add_subplot(212)
     ax6.plot(iterations,iters_params[:,1], label='k')
     ax6.set_xlabel('opt loops') # common x label
     ax6.set_ylabel('k')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
-#
-##generate random data with two features
-#X_train, Y_train = generate_data(n_train=200,train_only=True, n_features=2)
-#
-## by default the outlier fraction is 0.1 in generate data function 
-#outlier_fraction = 0.1
-#
-## store outliers and inliers in different numpy arrays
-#x_outliers, x_inliers = get_outliers_inliers(X_train,Y_train)
-#
-#n_inliers = len(x_inliers)
-#n_outliers = len(x_outliers)
-#
-##separate the two features and use it to plot the data 
-#F1 = X_train[:,[0]].reshape(-1,1)
-#F2 = X_train[:,[1]].reshape(-1,1)
-#
-## create a meshgrid 
-#xx , yy = np.meshgrid(np.linspace(-10, 10, 200), np.linspace(-10, 10, 200))
-#
-## scatter plot 
-#plt.scatter(F1,F2)
-#plt.xlabel('F1')
-#plt.ylabel('F2') 
-#
-#
-#classifiers = {
-#     'Angle-based Outlier Detector (ABOD)'   : ABOD(contamination=outlier_fraction),
-#     'K Nearest Neighbors (KNN)' :  KNN(contamination=outlier_fraction)
-#}
-#
-##set the figure size
-#plt.figure(figsize=(10, 10))
-#
-#for i, (clf_name,clf) in enumerate(classifiers.items()) :
-#    # fit the dataset to the model
-#    clf.fit(X_train)
-#
-#    # predict raw anomaly score
-#    scores_pred = clf.decision_function(X_train)*-1
-#
-#    # prediction of a datapoint category outlier or inlier
-#    y_pred = clf.predict(X_train)
-#
-#    # Num of Errors in prediction
-#    n_errors = (y_pred != Y_train).sum()
-#    print('Num of Errors : ',clf_name, n_errors)
-#
-#    # rest of the code is to create the visualization
-#
-#    # threshold value to consider a datapoint inlier or outlier
-#    threshold = stats.scoreatpercentile(scores_pred,100 *outlier_fraction)
-#
-#    # decision function calculates the raw anomaly score for every point
-#    Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()]) * -1
-#    Z = Z.reshape(xx.shape)
-#
-#    subplot = plt.subplot(1, 2, i + 1)
-#
-#    # fill blue colormap from minimum anomaly score to threshold value
-#    subplot.contourf(xx, yy, Z, levels = np.linspace(Z.min(), threshold, 10),cmap=plt.cm.Blues_r)
-#
-#    # draw red contour line where anomaly score is equal to threshold
-#    a = subplot.contour(xx, yy, Z, levels=[threshold],linewidths=2, colors='red')
-#
-#    # fill orange contour lines where range of anomaly score is from threshold to maximum anomaly score
-#    subplot.contourf(xx, yy, Z, levels=[threshold, Z.max()],colors='orange')
-#
-#    # scatter plot of inliers with white dots
-#    b = subplot.scatter(X_train[:-n_outliers, 0], X_train[:-n_outliers, 1], c='white',s=20, edgecolor='k') 
-#    # scatter plot of outliers with black dots
-#    c = subplot.scatter(X_train[-n_outliers:, 0], X_train[-n_outliers:, 1], c='black',s=20, edgecolor='k')
-#    subplot.axis('tight')
-#
-#    subplot.legend(
-#        [a.collections[0], b, c],
-#        ['learned decision function', 'true inliers', 'true outliers'],
-#        prop=matplotlib.font_manager.FontProperties(size=10),
-#        loc='lower right')
-#
-#    subplot.set_title(clf_name)
-#    subplot.set_xlim((-10, 10))
-#    subplot.set_ylim((-10, 10))
-#plt.show()
