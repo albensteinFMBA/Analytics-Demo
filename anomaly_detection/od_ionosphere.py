@@ -1,22 +1,31 @@
 # imports
 import time
-import copy
-import numpy as np
 import pandas as pd
-import pickle
+import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.font_manager
-from scipy import stats
-from pyod.models.abod import ABOD
+from pyod.utils.data import get_outliers_inliers
 from pyod.models.knn import KNN
-from pyod.utils.data import generate_data, get_outliers_inliers
-from skopt import gp_minimize 
-from skopt.space import Real, Integer
-#import sys
-#sys.path.insert(0, 'C:/prj/platform/tools/frugally-deep-master/keras_export')
-#from convert_model import convert as fd_convert
+from pyod.models.lof import LOF
+from pyod.models.sod import SOD
+from pyod.models.feature_bagging import FeatureBagging as FB
 
-def obj_func(params):
+from skopt import gp_minimize 
+
+
+def Rprecision_f(Y_train, scores_pred):
+  # compute R-precision
+  idxTrue = np.where(Y_train == 1) # get indices of true anomalies
+  t = np.count_nonzero(Y_train == 1) # get count of true anomalies
+  idxPred = np.argpartition(scores_pred, -t)[-t:] # get indices of top t predicted anomalies
+  intersect = np.intersect1d(idxTrue,idxPred) # get intersection between the 2 indices sets
+  Rprecision = len(intersect)/t 
+  return Rprecision
+
+def objVal_f(Rprecision):
+  objVal = Rprecision*-1 # *-1 ause larger Rprecision is better, but gp_minimize seeks to minimize the objVal 
+  return objVal
+
+def obj_func_kNN(params):
   ## objective function used in baseian optimization
   outlier_fraction=params[0]
   n_neighbors=params[1]
@@ -27,35 +36,27 @@ def obj_func(params):
   Y_train = np.load('Y_train.npy')
   X_train = np.load('X_train.npy')
     
-    
+  # create model  
   clf = KNN(contamination=outlier_fraction, n_neighbors=n_neighbors,method=method,radius=radius);
   # fit the dataset to the model
-  clf_name = 'kNN'
   clf.fit(X_train)
   
-  # predict raw anomaly score
-#  scores_pred = clf.decision_function(X_train)*-1
-
-  # prediction of a datapoint category outlier or inlier
-  y_pred = clf.predict(X_train)
-
-  # Num of Errors in prediction
-  n_errors = (y_pred != Y_train).sum()
-  print('Num of Errors : ',clf_name, n_errors)
+  scores_pred = clf.decision_function(X_train)*-1 # predict raw anomaly score
+  Rprecision = Rprecision_f(Y_train, scores_pred)
+  print('R Precision : ',Rprecision)
   
-  objVal = n_errors
-  
-  return objVal
+  return objVal_f(Rprecision)
 
 if __name__ == '__main__':
   lastTime=time.time()
   loadData = False
   runMdlCheat = True
-  runBayesOpt = True
+  runBayesOpt = False
   runResultsPlots = False
   runAll = True
   breakAll = False
   
+  # first time, load the web data, process, and save to numpy files. every other time, load numpy files
   if loadData:
     df = pd.read_csv('ionosphere.data', header = None)
     tmp=df.replace({34:{'g': 0.,'b': 1.}}) # this changes the strings to floats, which is what we want for PyOD
@@ -67,9 +68,11 @@ if __name__ == '__main__':
     Y_train = np.load('Y_train.npy')
     X_train = np.load('X_train.npy')  
   
-  if runMdlCheat:  
+  if runMdlCheat or runAll:  
     # run a model fit for a model that cheats for knowing the contamination of the dataset a-priori
-    # find the actualy contaminationof the dataset
+    # also use this model as the sand box for implementating and testing new algorithm features
+    
+    # find the actual contaminationof the dataset
     x_outliers, x_inliers = get_outliers_inliers(X_train,Y_train) 
     n_inliers = len(x_inliers)
     n_outliers = len(x_outliers)
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     # fit the dataset to the model
     clf_name = 'kNN Cheat'
     clf.fit(X_train)
-  
+
     # prediction of a datapoint category outlier or inlier
     y_pred = clf.predict(X_train)
   
@@ -88,10 +91,21 @@ if __name__ == '__main__':
     n_errors = (y_pred != Y_train).sum()
     print('Num of Errors : ',clf_name, n_errors)
     
-  if runBayesOpt:
-    res_gp = gp_minimize(obj_func,
+    # compute R-precision
+    idxTrue = np.where(Y_train == 1) # get indices of true anomalies
+    t = np.count_nonzero(Y_train == 1) # get count of true anomalies
+    
+    scores_pred = clf.decision_function(X_train)*-1 # predict raw anomaly score
+    idxPred = np.argpartition(scores_pred, -t)[-t:]
+    
+    intersect = np.intersect1d(idxTrue,idxPred)
+    Rprecision = len(intersect)/t
+    print('R Precision : ',Rprecision)
+    
+  if runBayesOpt or runAll:
+    res_gp = gp_minimize(obj_func_kNN,
                        [(0.001, 0.5), (2, 10),['largest','mean','median'],(0.1, 10)], # outlier_fraction, n_neighbors, method, radius
-                       n_calls=50,
+                       n_calls=30,
                        n_random_starts=10,
                        verbose=False)
   
