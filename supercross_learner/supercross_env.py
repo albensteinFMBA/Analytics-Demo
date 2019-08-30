@@ -8,7 +8,7 @@ import pickle
 
 class supercross_env: 
   # Define constants for environment model
-  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=50,drawRace_flg=False,draw_race_frequency=500,save_dir_str=None):
+  def __init__(self,trk,height=0.0,endTime=30.0,sK=11e3,sB=2700.0,sSag=0.3,bkXstart=0.0,sKnonLin_flg=True,stateTrkResolution=1,stateTrkVisonDist=50,drawRace_flg=False,draw_race_frequency=500,save_dir_str=None,cnnSt=True):
     
     #UI controls
     self.drawRace_flg = drawRace_flg
@@ -30,11 +30,15 @@ class supercross_env:
     
     # agent interface attributes
     # states
+    self.cnnSt = cnnSt
     self.stateTrkResolution = stateTrkResolution #distance increment between samples for agents view of track ahead
     self.stateTrkVisonDist = stateTrkVisonDist #how far in disatnce the agent sees ahead
     self.stateTrkNumel = int(np.floor(self.stateTrkVisonDist/self.stateTrkResolution))
     self.stateShape = int(self.stateTrkNumel + 3)
-    self._states = dict(shape=(self.stateShape,), type='float')
+    if cnnSt:
+      self._states = dict(shape=(self.stateShape,1), type='float')
+    else:
+      self._states = dict(shape=(self.stateShape,), type='float')
     # actions
     self._actions = dict(type='float', shape=(), min_value=-1, max_value=1)
     self.tensorForceExecuteN = 100
@@ -157,6 +161,8 @@ class supercross_env:
     sT = self.sTY[self.i]
     # 6] concatenate into a single state vector
     state = np.append(trkY_samples, [whlElev, bkSpd, sT])
+    if self.cnnSt:
+      state = np.reshape(state,[self.stateShape,1])
     return state
   # Define tensorForce API functions
   @property

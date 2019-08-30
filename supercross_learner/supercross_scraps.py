@@ -2,12 +2,37 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
-from supercross_track_maker import mk_trk1, mk_trk2
+from supercross_track_maker import mk_trk1, mk_trk2, mk_trk3
 from supercross_env import supercross_env
 from tensorforce.contrib.openai_gym import OpenAIGym
-
+import tensorflow as tf
 
 if True:
+#  i = tf.constant([1, 0, 2, 3, 0, 1, 1], dtype=tf.float32, name='i')
+  k = tf.constant([2, 1, 3], dtype=tf.float64, name='k')
+  
+  trk={}
+  trk['trk1'] = mk_trk1(units='m')
+  trk['trk3'] = mk_trk3(units='m')
+  save_dir_str = './savedTest02/'
+  env = supercross_env(trk)
+  
+  data = env.mk_state()
+  
+#  print(i, '\n', k, '\n')
+#  
+#  data   = tf.reshape(i, [1, int(i.shape[0]), 1], name='data')
+  kernel = tf.reshape(k, [int(k.shape[0]), 1, 1], name='kernel')
+#  
+#  print(data, '\n', kernel, '\n')
+#  
+  res = tf.squeeze(tf.nn.conv1d(data, kernel, 1, 'VALID'))
+  with tf.Session() as sess:
+    print(sess.run(res))
+
+
+
+if False:
   # Create an OpenAIgym environment
   env = OpenAIGym('CartPole-v0', visualize=False)
   a=env.actions

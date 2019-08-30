@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
-from supercross_track_maker import mk_trk1, mk_trk2, mk_trkAccel
+from supercross_track_maker import mk_trk1, mk_trk2, mk_trk3, mk_trkAccel
 from supercross_env import supercross_env
 from supercross_utilities import max_dict, random_action, AutoDict, find_nearest
 import copy
@@ -47,10 +47,10 @@ if __name__ == '__main__':
   if runTfAgent_flg:
     trk={}
     trk['trk1'] = mk_trk1(units='m')
-    trk['trk2'] = mk_trk2(units='m')
-    save_dir_str = './savedTest05/'
+    trk['trk3'] = mk_trk3(units='m')
+    save_dir_str = './savedTest02/'
     env = supercross_env(trk,drawRace_flg=False,save_dir_str=save_dir_str)
-    max_episodes = 50
+    max_episodes = 1
  
     # Network as list of layers
     # - Embedding layer:
@@ -63,17 +63,23 @@ if __name__ == '__main__':
     # Note that depending on the following layers used, the embedding layer *may* need a
     # flattening layer
     
-    network_spec = [
-        # dict(type='embedding', indices=100, size=32),
-        # dict(type'flatten'),
-        dict(type='dense', size=53),
-        dict(type='dense', size=36),
-        dict(type='dense', size=20)
-    ]
+    # cerate mixed data as described here: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-and-mixed-data/
+    # use keras layers as decribed here: https://tensorforce.readthedocs.io/en/latest/_modules/tensorforce/core/layers/keras.html#Keras
+#    network_spec = [
+#        # dict(type='embedding', indices=100, size=32),
+#        # dict(type'flatten'),
+#        dict(type='dense', size=32),
+#        dict(type='dense', size=32),
+#    ]
 #    network_spec = [
 #        dict(type='dense', size=np.ceil(env.stateShape*2/3), activation='relu'),
 #        dict(type='dense', size=np.ceil(env.stateShape*1/3), activation='relu')
 #        ]  
+    network_spec = [
+        dict(type='conv1d', size=32, window=3,stride=1,padding='SAME',bias=False,activation='relu',l2_regularization=0.0,l1_regularization=0.0),
+        #dict(type='flatten'),
+        #dict(type='dense', size=20),
+    ]
     
     
     saver_spec = {'directory':save_dir_str} #,'file':'supercrossTensorForce001'}
@@ -84,7 +90,7 @@ if __name__ == '__main__':
 #                - load: specifies whether model is loaded, if existent (default: true).
 #                - basename: optional file basename (default: 'model.ckpt').
 
-        
+    print(env.states)    
     agent = PPOAgent(
         states=env.states,
         actions=env.actions,
@@ -226,7 +232,8 @@ if __name__ == '__main__':
     ax302.grid()
     
   if runAccelTest_flg:
-    trk = mk_trkAccel(units='m')
+    trk = {}
+    trk['accel'] = mk_trkAccel(units='m')
     # compare and adjust to achieve similar results https://www.dirtrider.com/features/online-exclusives/141_0601_2006_450cc_motocross_shoutout_chart#page-4
     endTimeAccel =12
     envAccel = supercross_env(trk,endTime=endTimeAccel)
